@@ -112,7 +112,7 @@ jobs:
 
       - name: Type check
         working-directory: frontend
-        run: npx tsc --noEmit
+        run: npx tsc -b
 
       - name: Run Vitest component tests
         working-directory: frontend

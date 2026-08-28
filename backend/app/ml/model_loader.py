@@ -22,11 +22,14 @@ _explainer = None
 
 def _get_model_dir() -> Path:
     """Resolve the model directory, supporting both dev and Docker contexts."""
-    candidates = [
+    env_dir = os.environ.get("MODEL_DIR")
+    candidates = []
+    if env_dir:
+        candidates.append(Path(env_dir))
+    candidates.extend([
         Path("ml/models"),
         Path("../ml/models"),
-        Path(os.environ.get("MODEL_DIR", "ml/models")),
-    ]
+    ])
     for p in candidates:
         if p.exists():
             return p
