@@ -42,7 +42,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "backend"))
 
-from ml.features.feature_engineering import FEATURE_NAMES, compute_features
+from ml.features.feature_engineering import FEATURE_NAMES, compute_features  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -66,7 +66,7 @@ def load_data() -> pd.DataFrame:
     # Try loading from DB
     try:
         from app.db.session import SessionLocal
-        from app.models.orm_models import Match, TeamMatchStatistic
+        from app.models.orm_models import Match
         from sqlalchemy import select
 
         db = SessionLocal()

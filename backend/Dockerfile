@@ -7,14 +7,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev gcc && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY requirements.txt .
+COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY app/ ./app/
+# Copy application backend code
+COPY backend/app/ ./app/
 
-# Copy ML models (built during CI or pre-training step)
-COPY ../ml/models/ ./ml/models/
+# Copy ML model artifacts if present, ensure directory exists
+RUN mkdir -p ml/models
+COPY ml/models/ ./ml/models/
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

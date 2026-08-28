@@ -28,6 +28,20 @@ MatchIQ is a **full-stack, production-ready** portfolio platform that demonstrat
 
 ---
 
+## 🖼️ Application Showcase
+
+| **Interactive Analytics Dashboard** | **AI Match Predictor & SHAP Explainability** |
+|:---:|:---:|
+| ![Dashboard Preview](docs/assets/dashboard.png) | ![Predictor Preview](docs/assets/predictor.png) |
+| *Real-time Premier League fixtures, recent scores, standings, and team form* | *Match outcome probabilities with SHAP feature-level explanation bars* |
+
+| **Team Performance Breakdown** | **ML Model Benchmark & Analytics** |
+|:---:|:---:|
+| ![Team Details Preview](docs/assets/team-details.png) | ![Analytics Preview](docs/assets/analytics.png) |
+| *Form trends, goals scored/conceded, attack/defense radar metrics* | *Multi-model evaluation (LR, RF, XGBoost), ROC curves, and log loss* |
+
+---
+
 ## 🏗️ Architecture
 
 ![MatchIQ System Architecture](docs/assets/architecture-diagram.svg)
@@ -73,7 +87,7 @@ matchiq/
 
 ```bash
 # 1. Clone and configure
-git clone https://github.com/your-username/matchiq.git
+git clone https://github.com/DevPranavJad700/matchiq.git
 cd matchiq
 cp .env.example .env
 
@@ -88,7 +102,7 @@ docker compose up --build
 **Prerequisites:** Python 3.11+, Node.js 20+, PostgreSQL 14+
 
 ```bash
-git clone https://github.com/your-username/matchiq.git
+git clone https://github.com/DevPranavJad700/matchiq.git
 cd matchiq
 cp .env.example .env
 ```

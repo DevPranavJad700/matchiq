@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.repositories.league_repository import LeagueRepository
-from app.schemas.schemas import LeagueAnalyticsOut, LeagueOut, LeagueTableRow, TeamSummary
+from app.schemas.schemas import LeagueOut, LeagueTableRow, TeamSummary
 
 router = APIRouter(prefix="/leagues", tags=["leagues"])
 analytics_router = APIRouter(prefix="/analytics", tags=["analytics"])

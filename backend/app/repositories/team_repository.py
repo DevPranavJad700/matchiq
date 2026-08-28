@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.models.orm_models import (
     Match,
-    Season,
     Standing,
     Team,
     TeamMatchStatistic,

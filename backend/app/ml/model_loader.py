@@ -67,7 +67,7 @@ def load_model() -> bool:
             import shap
             # Extract final estimator if model is a Pipeline
             clf = _model.named_steps.get("clf", _model) if hasattr(_model, "named_steps") else _model
-            
+
             try:
                 _explainer = shap.TreeExplainer(clf)
                 logger.info("SHAP TreeExplainer initialized")

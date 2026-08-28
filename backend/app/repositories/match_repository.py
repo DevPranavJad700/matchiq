@@ -3,7 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.orm_models import Match, TeamMatchStatistic
+from app.models.orm_models import Match
 
 
 class MatchRepository:

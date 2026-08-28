@@ -116,7 +116,6 @@ class FeatureBuilderService:
         recent_matches = self._get_recent_matches(team_id, as_of, limit=10)
 
         form5 = self._compute_form(team_id, recent_matches[:5])
-        form10 = self._compute_form(team_id, recent_matches[:10])
 
         # --- Aggregate stats (last 10) ---
         stats = self._get_aggregate_stats(team_id, [m.id for m in recent_matches])
