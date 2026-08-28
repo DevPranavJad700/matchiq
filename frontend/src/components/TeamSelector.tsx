@@ -42,59 +42,59 @@ export function TeamSelector({ label, value, onChange, excludeId, id }: TeamSele
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={clsx(
-          'w-full flex items-center justify-between px-4 py-3.5 rounded-2xl border transition-all duration-300',
-          'bg-[var(--navy-800)] text-left shadow-lg',
+          'w-full flex items-center justify-between px-3.5 py-3 rounded-lg border transition-colors',
+          'bg-[#171B1F] text-left',
           open
-            ? 'border-[#2979ff] shadow-[0_0_20px_rgba(41,121,255,0.25)] ring-2 ring-[#2979ff]/20'
-            : 'border-[var(--border)] hover:border-[#2979ff]/50'
+            ? 'border-[#54C878] ring-1 ring-[#54C878]'
+            : 'border-[var(--border)] hover:border-[var(--border-strong)]'
         )}
       >
         {selected ? (
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#2979ff] to-[#7c3aed] flex items-center justify-center text-xs font-extrabold text-white shadow-md">
+            <div className="w-8 h-8 rounded bg-[#111417] border border-[var(--border-strong)] flex items-center justify-center text-xs font-bold text-[#F4F5F2]">
               {selected.short_name || selected.name.slice(0, 3).toUpperCase()}
             </div>
-            <span className="font-bold text-white text-base">{selected.name}</span>
+            <span className="font-semibold text-[#F4F5F2] text-sm">{selected.name}</span>
           </div>
         ) : (
-          <span className="text-[var(--text-muted)] font-medium">
+          <span className="text-[#5C636A] font-medium text-sm">
             {isLoading ? 'Loading Premier League teams...' : 'Select a team...'}
           </span>
         )}
         <ChevronDown
-          size={18}
+          size={16}
           className={clsx(
-            'text-[var(--text-muted)] transition-transform duration-300',
-            open && 'rotate-180 text-[#60a5fa]'
+            'text-[#5C636A] transition-transform duration-200',
+            open && 'rotate-180 text-[#54C878]'
           )}
         />
       </button>
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute z-50 w-full mt-2 rounded-2xl border border-[var(--border)] bg-[var(--navy-900)] shadow-2xl overflow-hidden backdrop-blur-2xl animate-scale-in">
+        <div className="absolute z-50 w-full mt-1.5 rounded-lg border border-[var(--border-strong)] bg-[#111417] shadow-xl overflow-hidden animate-fade-in">
           {/* Search */}
-          <div className="p-3 border-b border-[var(--border)]">
-            <div className="flex items-center gap-2.5 px-3 py-2 bg-[var(--navy-800)] rounded-xl border border-[var(--border)]">
-              <Search size={16} className="text-[var(--text-muted)]" />
+          <div className="p-2 border-b border-[var(--border)]">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#171B1F] rounded-md border border-[var(--border)]">
+              <Search size={14} className="text-[#5C636A]" />
               <input
                 autoFocus
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Filter Premier League teams..."
-                className="flex-1 bg-transparent text-sm font-medium text-white placeholder-[var(--text-muted)] outline-none"
+                placeholder="Search teams..."
+                className="flex-1 bg-transparent text-xs font-medium text-[#F4F5F2] placeholder-[#5C636A] outline-none"
               />
             </div>
           </div>
 
           {/* Options */}
-          <div className="max-h-64 overflow-y-auto p-1">
+          <div className="max-h-60 overflow-y-auto p-1">
             {isLoading ? (
-              <div className="flex justify-center py-8">
+              <div className="flex justify-center py-6">
                 <Spinner size="sm" />
               </div>
             ) : filtered.length === 0 ? (
-              <p className="text-center text-[var(--text-muted)] text-sm py-6">No matching teams found</p>
+              <p className="text-center text-[#5C636A] text-xs py-4">No matching teams found</p>
             ) : (
               filtered.map((team) => (
                 <button
@@ -106,16 +106,16 @@ export function TeamSelector({ label, value, onChange, excludeId, id }: TeamSele
                     setSearch('');
                   }}
                   className={clsx(
-                    'w-full flex items-center gap-3 px-3.5 py-2.5 text-left rounded-xl transition-all duration-150',
+                    'w-full flex items-center gap-2.5 px-3 py-2 text-left rounded-md transition-colors',
                     team.id === value
-                      ? 'bg-gradient-to-r from-[rgba(41,121,255,0.2)] to-[rgba(124,58,237,0.2)] text-white font-bold border border-[#2979ff]/40'
-                      : 'hover:bg-[var(--glass-hover)] text-[var(--text-secondary)] hover:text-white'
+                      ? 'bg-[#171B1F] text-[#F4F5F2] font-semibold border-l-2 border-[#54C878]'
+                      : 'hover:bg-[#1E2329] text-[#9DA4AA] hover:text-[#F4F5F2]'
                   )}
                 >
-                  <div className="w-8 h-8 rounded-lg bg-[var(--navy-700)] border border-[var(--border)] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                  <div className="w-7 h-7 rounded bg-[#171B1F] border border-[var(--border)] flex items-center justify-center text-xs font-bold text-[#F4F5F2] shrink-0">
                     {team.short_name || team.name.slice(0, 3).toUpperCase()}
                   </div>
-                  <span className="text-sm font-semibold">{team.name}</span>
+                  <span className="text-xs font-medium">{team.name}</span>
                 </button>
               ))
             )}

@@ -16,10 +16,11 @@ export function TeamsPage() {
   if (!teams?.length) return <EmptyState title="No teams found" message="Seed the database first" />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-3xl font-black text-white">Teams</h1>
-        <p className="text-[var(--text-secondary)] mt-1">{teams.length} teams · {leagues?.[0]?.name ?? ''}</p>
+        <span className="text-[#54C878] text-xs font-bold uppercase tracking-wider">Directory</span>
+        <h1 className="text-3xl font-extrabold text-[#F4F5F2] tracking-tight mt-1">Premier League Teams</h1>
+        <p className="text-[#9DA4AA] text-sm mt-0.5">{teams.length} teams · {leagues?.[0]?.name ?? 'English Premier League'}</p>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -28,16 +29,16 @@ export function TeamsPage() {
             key={team.id}
             to={`/teams/${team.id}`}
             id={`team-card-${team.id}`}
-            className="glass-card p-4 flex items-center gap-3 hover:border-[#2979ff]/40 transition-all group"
+            className="glass-card p-3.5 flex items-center gap-3 hover:bg-[#171B1F] transition-colors group"
           >
-            <div className="w-10 h-10 rounded-full bg-[var(--navy-600)] flex items-center justify-center text-sm font-bold text-white shrink-0 group-hover:bg-[#2979ff]/20 transition-colors">
+            <div className="w-9 h-9 rounded bg-[#171B1F] border border-[var(--border-strong)] flex items-center justify-center text-xs font-bold text-[#F4F5F2] shrink-0">
               {team.short_name || team.name.slice(0, 3).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white font-medium text-sm truncate">{team.name}</p>
-              <p className="text-[var(--text-muted)] text-xs">{team.country || 'England'}</p>
+              <p className="text-[#F4F5F2] font-semibold text-sm truncate">{team.name}</p>
+              <p className="text-[#5C636A] text-xs">{team.country || 'England'}</p>
             </div>
-            <ChevronRight size={14} className="text-[var(--text-muted)] group-hover:text-[#2979ff] transition-colors" />
+            <ChevronRight size={14} className="text-[#5C636A] group-hover:text-[#F4F5F2] transition-colors" />
           </Link>
         ))}
       </div>

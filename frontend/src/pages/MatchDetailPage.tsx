@@ -29,52 +29,52 @@ export function MatchDetailPage() {
   const resultText = match.result === 'H' ? `${match.home_team.name} Win` : match.result === 'A' ? `${match.away_team.name} Win` : 'Draw';
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <Link to="/matches" className="flex items-center gap-1 text-[var(--text-muted)] hover:text-white text-sm transition-colors">
-        <ArrowLeft size={14} /> Back to Matches
+    <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+      <Link to="/matches" className="flex items-center gap-1 text-[#9DA4AA] hover:text-[#F4F5F2] text-xs transition-colors">
+        <ArrowLeft size={12} /> Back to Matches
       </Link>
 
       {/* Score card */}
-      <div className="glass-card p-8 text-center">
-        <p className="text-[var(--text-muted)] text-sm mb-4">
+      <div className="glass-card p-6 text-center border border-[var(--border)]">
+        <p className="text-[#5C636A] text-xs font-medium mb-4">
           {new Date(match.match_date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           {match.matchday && ` · Matchday ${match.matchday}`}
         </p>
         <div className="flex items-center justify-center gap-8">
           <Link to={`/teams/${match.home_team.id}`} className="flex flex-col items-center gap-2 group">
-            <div className="w-16 h-16 rounded-2xl bg-[var(--navy-700)] flex items-center justify-center font-bold text-white text-xl group-hover:bg-[#2979ff]/20 transition-colors">
+            <div className="w-14 h-14 rounded-lg bg-[#171B1F] border border-[var(--border-strong)] flex items-center justify-center font-bold text-[#F4F5F2] text-base group-hover:border-[#54C878] transition-colors">
               {match.home_team.short_name || match.home_team.name.slice(0, 3).toUpperCase()}
             </div>
-            <span className="text-white font-semibold text-sm">{match.home_team.name}</span>
-            <span className="text-[var(--text-muted)] text-xs">Home</span>
+            <span className="text-[#F4F5F2] font-semibold text-sm">{match.home_team.name}</span>
+            <span className="text-[#5C636A] text-xs">Home</span>
           </Link>
 
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-1">
             {played ? (
-              <span className="text-4xl font-black text-white stat-number">
+              <span className="text-3xl font-extrabold text-[#F4F5F2] stat-number">
                 {match.home_score} — {match.away_score}
               </span>
             ) : (
-              <span className="text-2xl font-bold text-[var(--text-muted)]">VS</span>
+              <span className="text-xl font-bold text-[#5C636A]">VS</span>
             )}
-            {played && <span className="text-[#ffc107] text-sm font-medium">{resultText}</span>}
+            {played && <span className="text-[#F59E0B] text-xs font-semibold">{resultText}</span>}
           </div>
 
           <Link to={`/teams/${match.away_team.id}`} className="flex flex-col items-center gap-2 group">
-            <div className="w-16 h-16 rounded-2xl bg-[var(--navy-700)] flex items-center justify-center font-bold text-white text-xl group-hover:bg-[#ff4444]/20 transition-colors">
+            <div className="w-14 h-14 rounded-lg bg-[#171B1F] border border-[var(--border-strong)] flex items-center justify-center font-bold text-[#F4F5F2] text-base group-hover:border-[#54C878] transition-colors">
               {match.away_team.short_name || match.away_team.name.slice(0, 3).toUpperCase()}
             </div>
-            <span className="text-white font-semibold text-sm">{match.away_team.name}</span>
-            <span className="text-[var(--text-muted)] text-xs">Away</span>
+            <span className="text-[#F4F5F2] font-semibold text-sm">{match.away_team.name}</span>
+            <span className="text-[#5C636A] text-xs">Away</span>
           </Link>
         </div>
       </div>
 
       {/* Stats comparison */}
       {homeStats && awayStats && (
-        <div className="glass-card p-6">
-          <h2 className="text-white font-bold text-lg mb-5">Match Statistics</h2>
-          <div className="space-y-4">
+        <div className="glass-card p-5 border border-[var(--border)]">
+          <h2 className="text-[#F4F5F2] font-bold text-base mb-4">Match Statistics</h2>
+          <div className="space-y-3">
             {[
               { label: 'Shots', home: homeStats.shots, away: awayStats.shots },
               { label: 'Shots on Target', home: homeStats.shots_on_target, away: awayStats.shots_on_target },
@@ -93,14 +93,14 @@ export function MatchDetailPage() {
 
               return (
                 <div key={label}>
-                  <div className="flex items-center justify-between text-sm mb-1.5">
-                    <span className="font-medium text-[#2979ff] stat-number">{decimals ? h.toFixed(decimals) : h}</span>
-                    <span className="text-[var(--text-muted)] text-xs">{label}</span>
-                    <span className="font-medium text-[#ff4444] stat-number">{decimals ? a.toFixed(decimals) : a}</span>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="font-semibold text-[#54C878] stat-number">{decimals ? h.toFixed(decimals) : h}</span>
+                    <span className="text-[#9DA4AA] font-medium">{label}</span>
+                    <span className="font-semibold text-[#3B82F6] stat-number">{decimals ? a.toFixed(decimals) : a}</span>
                   </div>
-                  <div className="flex h-2 rounded-full overflow-hidden bg-[var(--navy-700)]">
-                    <div className="h-full bg-[#2979ff] transition-all" style={{ width: `${homePct}%` }} />
-                    <div className="h-full bg-[#ff4444] transition-all" style={{ width: `${awayPct}%` }} />
+                  <div className="flex h-1.5 rounded-full overflow-hidden bg-[#171B1F]">
+                    <div className="h-full bg-[#54C878] transition-all" style={{ width: `${homePct}%` }} />
+                    <div className="h-full bg-[#3B82F6] transition-all" style={{ width: `${awayPct}%` }} />
                   </div>
                 </div>
               );
@@ -111,15 +111,15 @@ export function MatchDetailPage() {
 
       {/* H2H */}
       {h2h && h2h.length > 0 && (
-        <div className="glass-card p-5">
-          <h2 className="text-white font-bold text-lg mb-4">Head-to-Head History</h2>
-          <div className="space-y-2">
+        <div className="glass-card p-5 border border-[var(--border)]">
+          <h2 className="text-[#F4F5F2] font-bold text-base mb-3">Head-to-Head History</h2>
+          <div className="space-y-1">
             {h2h.map((m) => (
-              <div key={m.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-[var(--glass-hover)]">
-                <span className="text-[var(--text-secondary)] text-sm flex-1">{m.home_team}</span>
-                <span className="font-bold text-white stat-number mx-3">{m.home_score} – {m.away_score}</span>
-                <span className="text-[var(--text-secondary)] text-sm flex-1 text-right">{m.away_team}</span>
-                <span className="text-[var(--text-muted)] text-xs ml-4 w-20 text-right">
+              <div key={m.id} className="flex items-center justify-between py-1.5 px-2.5 rounded-md hover:bg-[#171B1F] text-xs">
+                <span className="text-[#9DA4AA] flex-1 truncate">{m.home_team}</span>
+                <span className="font-bold text-[#F4F5F2] stat-number mx-2">{m.home_score} – {m.away_score}</span>
+                <span className="text-[#9DA4AA] flex-1 text-right truncate">{m.away_team}</span>
+                <span className="text-[#5C636A] ml-3 w-16 text-right">
                   {new Date(m.date).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })}
                 </span>
               </div>

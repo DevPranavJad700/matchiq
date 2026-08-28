@@ -50,27 +50,27 @@ export function TeamDetailPage() {
   })) ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Back + header */}
       <div>
-        <Link to="/teams" className="flex items-center gap-1 text-[var(--text-muted)] hover:text-white text-sm mb-4 transition-colors">
-          <ArrowLeft size={14} /> Back to Teams
+        <Link to="/teams" className="flex items-center gap-1 text-[#9DA4AA] hover:text-[#F4F5F2] text-xs mb-3 transition-colors">
+          <ArrowLeft size={12} /> Back to Teams
         </Link>
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-[var(--navy-700)] border border-[var(--border)] flex items-center justify-center text-xl font-bold text-white">
+        <div className="flex items-center justify-between flex-wrap gap-4 py-2 border-b border-[var(--border)]">
+          <div className="flex items-center gap-3.5">
+            <div className="w-14 h-14 rounded-lg bg-[#171B1F] border border-[var(--border-strong)] flex items-center justify-center text-lg font-bold text-[#F4F5F2]">
               {team.short_name || team.name.slice(0, 3).toUpperCase()}
             </div>
             <div>
-              <h1 className="text-3xl font-black text-white">{team.name}</h1>
-              <p className="text-[var(--text-secondary)] text-sm mt-0.5">
-                {team.country} · {stats?.season_year ?? '2023-24'}
+              <h1 className="text-2xl font-bold text-[#F4F5F2]">{team.name}</h1>
+              <p className="text-[#9DA4AA] text-xs mt-0.5">
+                {team.country} · Premier League {stats?.season_year ?? '2023-24'}
               </p>
             </div>
           </div>
           <Link
             to={`/predict`}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#2979ff]/15 border border-[#2979ff]/30 text-[#2979ff] hover:bg-[#2979ff]/25 transition-all text-sm font-medium"
+            className="flex items-center gap-1.5 px-4 py-2 btn-primary text-xs font-semibold"
           >
             <Zap size={14} />
             Predict with {team.short_name || team.name}
@@ -80,7 +80,7 @@ export function TeamDetailPage() {
 
       {/* Standing stats */}
       {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
           <StatCard label="Position" value={stats.position ?? '—'} accent="blue" />
           <StatCard label="Points" value={stats.points ?? '—'} accent="green" />
           <StatCard label="Played" value={stats.played ?? '—'} />
@@ -95,21 +95,21 @@ export function TeamDetailPage() {
         {/* Form */}
         <div className="glass-card p-5">
           <SectionHeader title="Recent Form" subtitle="Last 5 matches" />
-          <div className="flex gap-2 mb-6">
+          <div className="flex gap-2 mb-4">
             <FormStrip results={recentResults} />
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="text-center glass-card p-3">
-              <p className="text-2xl font-black text-[#00e676] stat-number">{form?.wins_last_5 ?? 0}</p>
-              <p className="text-[var(--text-muted)] text-xs mt-1">Wins</p>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="p-2.5 rounded-md bg-[#171B1F] border border-[var(--border)]">
+              <p className="text-xl font-bold text-[#54C878] stat-number">{form?.wins_last_5 ?? 0}</p>
+              <p className="text-[#5C636A] text-xs mt-0.5 font-medium">Wins</p>
             </div>
-            <div className="text-center glass-card p-3">
-              <p className="text-2xl font-black text-[#ffc107] stat-number">{form?.draws_last_5 ?? 0}</p>
-              <p className="text-[var(--text-muted)] text-xs mt-1">Draws</p>
+            <div className="p-2.5 rounded-md bg-[#171B1F] border border-[var(--border)]">
+              <p className="text-xl font-bold text-[#F59E0B] stat-number">{form?.draws_last_5 ?? 0}</p>
+              <p className="text-[#5C636A] text-xs mt-0.5 font-medium">Draws</p>
             </div>
-            <div className="text-center glass-card p-3">
-              <p className="text-2xl font-black text-[#ff4444] stat-number">{form?.losses_last_5 ?? 0}</p>
-              <p className="text-[var(--text-muted)] text-xs mt-1">Losses</p>
+            <div className="p-2.5 rounded-md bg-[#171B1F] border border-[var(--border)]">
+              <p className="text-xl font-bold text-[#EF4444] stat-number">{form?.losses_last_5 ?? 0}</p>
+              <p className="text-[#5C636A] text-xs mt-0.5 font-medium">Losses</p>
             </div>
           </div>
         </div>
@@ -118,7 +118,7 @@ export function TeamDetailPage() {
         {stats && (
           <div className="glass-card p-5">
             <SectionHeader title="Performance Stats" subtitle="Season averages" />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               <StatCard label="Avg Goals" value={stats.avg_goals_scored?.toFixed(2) ?? '—'} accent="green" />
               <StatCard label="Avg Conceded" value={stats.avg_goals_conceded?.toFixed(2) ?? '—'} accent="red" />
               <StatCard label="Avg Shots" value={stats.avg_shots?.toFixed(1) ?? '—'} />
@@ -137,17 +137,17 @@ export function TeamDetailPage() {
       {goalTrend.length > 0 && (
         <div className="glass-card p-5">
           <SectionHeader title="Goals Trend" subtitle="Last 10 matches" />
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={180}>
             <LineChart data={goalTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="match" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
-              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+              <XAxis dataKey="match" tick={{ fill: '#9DA4AA', fontSize: 11 }} />
+              <YAxis tick={{ fill: '#9DA4AA', fontSize: 11 }} />
               <Tooltip
-                contentStyle={{ background: 'var(--navy-800)', border: '1px solid var(--border)', borderRadius: 8 }}
-                labelStyle={{ color: 'var(--text-secondary)' }}
+                contentStyle={{ background: '#171B1F', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6 }}
+                labelStyle={{ color: '#9DA4AA' }}
               />
-              <Line type="monotone" dataKey="scored" stroke="#00e676" strokeWidth={2} dot={{ r: 4, fill: '#00e676' }} name="Goals Scored" />
-              <Line type="monotone" dataKey="conceded" stroke="#ff4444" strokeWidth={2} dot={{ r: 4, fill: '#ff4444' }} name="Conceded" />
+              <Line type="monotone" dataKey="scored" stroke="#54C878" strokeWidth={2} dot={{ r: 3, fill: '#54C878' }} name="Goals Scored" />
+              <Line type="monotone" dataKey="conceded" stroke="#EF4444" strokeWidth={2} dot={{ r: 3, fill: '#EF4444' }} name="Conceded" />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -157,7 +157,7 @@ export function TeamDetailPage() {
       {matches && matches.items.length > 0 && (
         <div className="glass-card p-5">
           <SectionHeader title="Match History" />
-          <div className="space-y-2">
+          <div className="space-y-1">
             {matches.items.map((m) => {
               const isHome = m.home_team.id === teamId;
               const opponent = isHome ? m.away_team : m.home_team;
@@ -165,16 +165,16 @@ export function TeamDetailPage() {
               const oppScore = isHome ? m.away_score : m.home_score;
               const win = (isHome && m.result === 'H') || (!isHome && m.result === 'A');
               const draw = m.result === 'D';
-              const resultColor = win ? '#00e676' : draw ? '#ffc107' : '#ff4444';
+              const resultColor = win ? '#54C878' : draw ? '#F59E0B' : '#EF4444';
               const resultLabel = win ? 'W' : draw ? 'D' : 'L';
 
               return (
-                <Link key={m.id} to={`/matches/${m.id}`} className="flex items-center gap-4 py-2 px-3 rounded-lg hover:bg-[var(--glass-hover)] transition-colors">
-                  <span className="w-6 h-6 rounded text-xs font-bold flex items-center justify-center" style={{ color: resultColor, background: `${resultColor}20` }}>{resultLabel}</span>
-                  <span className="text-[var(--text-muted)] text-xs w-5">{isHome ? 'H' : 'A'}</span>
-                  <span className="text-[var(--text-secondary)] text-sm flex-1 truncate">{opponent.name}</span>
-                  <span className="font-bold stat-number text-white text-sm">{teamScore ?? '?'} – {oppScore ?? '?'}</span>
-                  <span className="text-[var(--text-muted)] text-xs">{new Date(m.match_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                <Link key={m.id} to={`/matches/${m.id}`} className="flex items-center gap-4 py-2 px-3 rounded-md hover:bg-[#171B1F] transition-colors">
+                  <span className="w-5 h-5 rounded text-xs font-bold flex items-center justify-center" style={{ color: resultColor, background: `${resultColor}15` }}>{resultLabel}</span>
+                  <span className="text-[#5C636A] text-xs w-4">{isHome ? 'H' : 'A'}</span>
+                  <span className="text-[#F4F5F2] text-sm flex-1 truncate font-medium">{opponent.name}</span>
+                  <span className="font-bold stat-number text-[#F4F5F2] text-sm">{teamScore ?? '?'} – {oppScore ?? '?'}</span>
+                  <span className="text-[#5C636A] text-xs">{new Date(m.match_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
                 </Link>
               );
             })}

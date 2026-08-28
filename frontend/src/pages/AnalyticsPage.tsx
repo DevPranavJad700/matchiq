@@ -22,33 +22,34 @@ export function AnalyticsPage() {
   return (
     <div className="space-y-8 animate-fade-in">
       <div>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-          League <span className="gradient-text">Analytics</span>
+        <span className="text-[#54C878] text-xs font-bold uppercase tracking-wider">Football Data Journalism</span>
+        <h1 className="text-3xl font-extrabold text-[#F4F5F2] tracking-tight mt-1">
+          League Performance Trends
         </h1>
-        <p className="text-[var(--text-secondary)] mt-1 font-medium">
-          {analytics.league.name} · Season {analytics.season} Metrics Breakdown
+        <p className="text-[#9DA4AA] mt-1 text-sm font-medium">
+          {analytics.league.name} · Season {analytics.season} Metrics
         </p>
       </div>
 
       {/* Charts row */}
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Top scoring teams */}
-        <div className="glass-card p-6 border border-[#00e676]/20 shadow-xl">
-          <h2 className="text-white font-extrabold text-lg mb-4 flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#00e676]" /> Top Scoring Teams (Goals / Match)
+        <div className="glass-card p-5 border border-[var(--border)]">
+          <h2 className="text-[#F4F5F2] font-semibold text-base mb-4">
+            Top Scoring Teams (Goals / Match)
           </h2>
-          <ResponsiveContainer width="100%" height={260}>
+          <ResponsiveContainer width="100%" height={240}>
             <BarChart data={top_scorers_teams.slice(0, 8)} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-              <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} />
-              <YAxis dataKey="team" type="category" width={130} tick={{ fill: '#f8fafc', fontSize: 11, fontWeight: 600 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+              <XAxis type="number" tick={{ fill: '#9DA4AA', fontSize: 11 }} />
+              <YAxis dataKey="team" type="category" width={120} tick={{ fill: '#F4F5F2', fontSize: 11 }} />
               <Tooltip
-                contentStyle={{ background: '#0d1527', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, fontSize: 12, fontWeight: 600 }}
-                formatter={(v) => [`${(Number(v) || 0).toFixed(2)} avg goals`, 'Attack Strength'] as [string, string]}
+                contentStyle={{ background: '#171B1F', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, fontSize: 12 }}
+                formatter={(v) => [`${(Number(v) || 0).toFixed(2)} goals/match`, 'Attack'] as [string, string]}
               />
-              <Bar dataKey="avg_goals" radius={[0, 6, 6, 0]}>
+              <Bar dataKey="avg_goals" radius={[0, 4, 4, 0]}>
                 {top_scorers_teams.slice(0, 8).map((_, i) => (
-                  <Cell key={i} fill={`rgba(0, 230, 118, ${0.95 - i * 0.08})`} />
+                  <Cell key={i} fill="#54C878" opacity={1 - i * 0.08} />
                 ))}
               </Bar>
             </BarChart>
@@ -56,22 +57,22 @@ export function AnalyticsPage() {
         </div>
 
         {/* Best defences */}
-        <div className="glass-card p-6 border border-[#2979ff]/20 shadow-xl">
-          <h2 className="text-white font-extrabold text-lg mb-4 flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#2979ff]" /> Best Defensive Units (Conceded / Match)
+        <div className="glass-card p-5 border border-[var(--border)]">
+          <h2 className="text-[#F4F5F2] font-semibold text-base mb-4">
+            Best Defensive Units (Conceded / Match)
           </h2>
-          <ResponsiveContainer width="100%" height={260}>
+          <ResponsiveContainer width="100%" height={240}>
             <BarChart data={best_defences_teams.slice(0, 8)} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-              <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} />
-              <YAxis dataKey="team" type="category" width={130} tick={{ fill: '#f8fafc', fontSize: 11, fontWeight: 600 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+              <XAxis type="number" tick={{ fill: '#9DA4AA', fontSize: 11 }} />
+              <YAxis dataKey="team" type="category" width={120} tick={{ fill: '#F4F5F2', fontSize: 11 }} />
               <Tooltip
-                contentStyle={{ background: '#0d1527', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, fontSize: 12, fontWeight: 600 }}
-                formatter={(v) => [`${(Number(v) || 0).toFixed(2)} avg conceded`, 'Defensive Strength'] as [string, string]}
+                contentStyle={{ background: '#171B1F', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, fontSize: 12 }}
+                formatter={(v) => [`${(Number(v) || 0).toFixed(2)} conceded/match`, 'Defence'] as [string, string]}
               />
-              <Bar dataKey="avg_conceded" radius={[0, 6, 6, 0]}>
+              <Bar dataKey="avg_conceded" radius={[0, 4, 4, 0]}>
                 {best_defences_teams.slice(0, 8).map((_, i) => (
-                  <Cell key={i} fill={`rgba(41, 121, 255, ${0.95 - i * 0.08})`} />
+                  <Cell key={i} fill="#3B82F6" opacity={1 - i * 0.08} />
                 ))}
               </Bar>
             </BarChart>
@@ -80,27 +81,27 @@ export function AnalyticsPage() {
       </div>
 
       {/* League Table */}
-      <div className="glass-card p-6 border border-[var(--border)] shadow-2xl">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-white font-extrabold text-2xl tracking-tight">Official League Standings</h2>
-          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--navy-800)] text-[var(--text-secondary)] border border-[var(--border)]">
+      <div className="glass-card p-5 border border-[var(--border)]">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-[#F4F5F2] font-bold text-lg">Official League Standings</h2>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded bg-[#171B1F] text-[#9DA4AA] border border-[var(--border)]">
             2023-2024 Season
           </span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-[var(--text-muted)] text-xs font-bold uppercase tracking-wider border-b border-[var(--border)] bg-[var(--navy-900)]">
-                <th className="py-3 px-3 text-left w-10">#</th>
-                <th className="py-3 px-4 text-left">Team</th>
-                <th className="py-3 px-3 text-center">P</th>
-                <th className="py-3 px-3 text-center">W</th>
-                <th className="py-3 px-3 text-center">D</th>
-                <th className="py-3 px-3 text-center">L</th>
-                <th className="py-3 px-3 text-center">GF</th>
-                <th className="py-3 px-3 text-center">GA</th>
-                <th className="py-3 px-3 text-center">GD</th>
-                <th className="py-3 px-4 text-center font-black text-white">Pts</th>
+              <tr className="text-[#5C636A] text-xs font-semibold uppercase tracking-wider border-b border-[var(--border)] bg-[#171B1F]">
+                <th className="py-2.5 px-3 text-left w-10">#</th>
+                <th className="py-2.5 px-4 text-left">Team</th>
+                <th className="py-2.5 px-3 text-center">P</th>
+                <th className="py-2.5 px-3 text-center">W</th>
+                <th className="py-2.5 px-3 text-center">D</th>
+                <th className="py-2.5 px-3 text-center">L</th>
+                <th className="py-2.5 px-3 text-center">GF</th>
+                <th className="py-2.5 px-3 text-center">GA</th>
+                <th className="py-2.5 px-3 text-center">GD</th>
+                <th className="py-2.5 px-4 text-center font-bold text-[#F4F5F2]">Pts</th>
               </tr>
             </thead>
             <tbody>
@@ -108,41 +109,34 @@ export function AnalyticsPage() {
                 <tr
                   key={row.position}
                   id={`league-row-${row.position}`}
-                  className="table-row-hover border-b border-[var(--border)] border-opacity-40 transition-colors"
+                  className="table-row-hover border-b border-[var(--border)]"
                 >
-                  <td className="py-3 px-3">
-                    <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold ${
-                      idx < 4 ? 'bg-[#2979ff]/20 text-[#2979ff] border border-[#2979ff]/40' : idx < 6 ? 'bg-[#00e676]/20 text-[#00e676] border border-[#00e676]/40' : idx >= table.length - 3 ? 'bg-[#ff4444]/20 text-[#ff4444] border border-[#ff4444]/40' : 'text-[var(--text-muted)]'
+                  <td className="py-2.5 px-3">
+                    <span className={`w-5 h-5 rounded flex items-center justify-center text-xs font-bold ${
+                      idx < 4 ? 'bg-[#3B82F6]/20 text-[#3B82F6]' : idx < 6 ? 'bg-[#54C878]/20 text-[#54C878]' : idx >= table.length - 3 ? 'bg-[#EF4444]/20 text-[#EF4444]' : 'text-[#5C636A]'
                     }`}>{row.position}</span>
                   </td>
-                  <td className="py-3 px-4">
-                    <span className="text-white font-bold">{row.team.name}</span>
+                  <td className="py-2.5 px-4">
+                    <span className="text-[#F4F5F2] font-semibold">{row.team.name}</span>
                   </td>
-                  <td className="py-3 px-3 text-center text-[var(--text-secondary)] font-medium stat-number">{row.played}</td>
-                  <td className="py-3 px-3 text-center text-[#00e676] font-bold stat-number">{row.won}</td>
-                  <td className="py-3 px-3 text-center text-[#ffc107] font-bold stat-number">{row.drawn}</td>
-                  <td className="py-3 px-3 text-center text-[#ff4444] font-bold stat-number">{row.lost}</td>
-                  <td className="py-3 px-3 text-center text-[var(--text-secondary)] font-medium stat-number">{row.goals_for}</td>
-                  <td className="py-3 px-3 text-center text-[var(--text-secondary)] font-medium stat-number">{row.goals_against}</td>
-                  <td className="py-3 px-3 text-center font-bold stat-number">
-                    <span className={row.goal_difference > 0 ? 'text-[#00e676]' : row.goal_difference < 0 ? 'text-[#ff4444]' : 'text-[var(--text-muted)]'}>
+                  <td className="py-2.5 px-3 text-center text-[#9DA4AA] stat-number">{row.played}</td>
+                  <td className="py-2.5 px-3 text-center text-[#54C878] font-medium stat-number">{row.won}</td>
+                  <td className="py-2.5 px-3 text-center text-[#F59E0B] font-medium stat-number">{row.drawn}</td>
+                  <td className="py-2.5 px-3 text-center text-[#EF4444] font-medium stat-number">{row.lost}</td>
+                  <td className="py-2.5 px-3 text-center text-[#9DA4AA] stat-number">{row.goals_for}</td>
+                  <td className="py-2.5 px-3 text-center text-[#9DA4AA] stat-number">{row.goals_against}</td>
+                  <td className="py-2.5 px-3 text-center font-semibold stat-number">
+                    <span className={row.goal_difference > 0 ? 'text-[#54C878]' : row.goal_difference < 0 ? 'text-[#EF4444]' : 'text-[#5C636A]'}>
                       {row.goal_difference > 0 ? '+' : ''}{row.goal_difference}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-center">
-                    <span className="font-black text-white text-base stat-number">{row.points}</span>
+                  <td className="py-2.5 px-4 text-center">
+                    <span className="font-bold text-[#F4F5F2] text-sm stat-number">{row.points}</span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-
-        {/* Legend */}
-        <div className="flex flex-wrap gap-5 mt-5 pt-4 border-t border-[var(--border)] text-xs font-semibold text-[var(--text-muted)]">
-          <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-[#2979ff]" /> UEFA Champions League</span>
-          <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-[#00e676]" /> UEFA Europa League</span>
-          <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-[#ff4444]" /> Relegation Zone</span>
         </div>
       </div>
     </div>

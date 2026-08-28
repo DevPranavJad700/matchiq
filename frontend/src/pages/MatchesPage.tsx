@@ -18,11 +18,12 @@ export function MatchesPage() {
   const totalPages = data ? Math.ceil(data.total / 25) : 1;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
         <div>
-          <h1 className="text-3xl font-black text-white">Matches</h1>
-          <p className="text-[var(--text-secondary)] mt-1">{data?.total} matches · Page {page} of {totalPages}</p>
+          <span className="text-[#54C878] text-xs font-bold uppercase tracking-wider">Fixtures</span>
+          <h1 className="text-3xl font-extrabold text-[#F4F5F2] tracking-tight mt-1">Match History</h1>
+          <p className="text-[#9DA4AA] text-sm mt-0.5">{data?.total} matches · Page {page} of {totalPages}</p>
         </div>
       </div>
 
@@ -37,18 +38,18 @@ export function MatchesPage() {
             id="prev-page"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="px-4 py-2 rounded-lg border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:text-white hover:border-[var(--navy-500)] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            className="px-3.5 py-1.5 rounded-md border border-[var(--border)] text-xs font-semibold text-[#9DA4AA] hover:text-[#F4F5F2] hover:bg-[#171B1F] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             Previous
           </button>
-          <span className="text-[var(--text-muted)] text-sm px-4">
-            {page} / {totalPages}
+          <span className="text-[#5C636A] text-xs px-3 font-medium">
+            Page {page} of {totalPages}
           </span>
           <button
             id="next-page"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="px-4 py-2 rounded-lg border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:text-white hover:border-[var(--navy-500)] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            className="px-3.5 py-1.5 rounded-md border border-[var(--border)] text-xs font-semibold text-[#9DA4AA] hover:text-[#F4F5F2] hover:bg-[#171B1F] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             Next
           </button>

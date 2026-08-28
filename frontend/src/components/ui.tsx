@@ -19,39 +19,24 @@ interface StatCardProps {
 }
 
 const accentColors = {
-  green: 'text-[#00e676]',
-  blue: 'text-[#2979ff]',
-  amber: 'text-[#ffc107]',
-  red: 'text-[#ff4444]',
-  default: 'text-white',
+  green: 'text-[#54C878]',
+  blue: 'text-[#3B82F6]',
+  amber: 'text-[#F59E0B]',
+  red: 'text-[#EF4444]',
+  default: 'text-[#F4F5F2]',
 };
 
 export function StatCard({ label, value, sub, icon, accent = 'default' }: StatCardProps) {
-  const iconBgs = {
-    green: 'bg-[#00e676]/10 text-[#00e676] border-[#00e676]/20',
-    blue: 'bg-[#2979ff]/10 text-[#2979ff] border-[#2979ff]/20',
-    amber: 'bg-[#ffc107]/10 text-[#ffc107] border-[#ffc107]/20',
-    red: 'bg-[#ff4444]/10 text-[#ff4444] border-[#ff4444]/20',
-    default: 'bg-[var(--navy-600)]/30 text-white border-white/10',
-  };
-
   return (
-    <div className="glass-card p-5 flex flex-col gap-2 relative overflow-hidden group">
-      <div className="flex items-center justify-between z-10">
-        <span className="text-[var(--text-secondary)] text-xs font-bold uppercase tracking-wider">{label}</span>
-        {icon && (
-          <div className={clsx('w-8 h-8 rounded-xl flex items-center justify-center border transition-transform duration-300 group-hover:scale-110', iconBgs[accent])}>
-            {icon}
-          </div>
-        )}
+    <div className="glass-card p-4 flex flex-col justify-between">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <span className="text-[#9DA4AA] text-xs font-semibold uppercase tracking-wider">{label}</span>
+        {icon && <span className="text-[#5C636A]">{icon}</span>}
       </div>
-      <div className="flex items-baseline gap-2 z-10">
-        <span className={clsx('text-3xl font-extrabold stat-number tracking-tight', accentColors[accent])}>{value}</span>
+      <div className="flex items-baseline gap-2">
+        <span className={clsx('text-2xl font-bold stat-number tracking-tight', accentColors[accent])}>{value}</span>
       </div>
-      {sub && <span className="text-[var(--text-muted)] text-xs font-medium z-10">{sub}</span>}
-      
-      {/* Decorative gradient glow on hover */}
-      <div className="absolute -right-6 -bottom-6 w-20 h-20 rounded-full bg-gradient-to-br from-[#2979ff]/10 to-transparent blur-xl group-hover:scale-150 transition-transform duration-500 pointer-events-none" />
+      {sub && <span className="text-[#5C636A] text-xs mt-1 font-medium">{sub}</span>}
     </div>
   );
 }
@@ -65,18 +50,18 @@ interface BadgeProps {
 
 export function Badge({ children, variant = 'neutral' }: BadgeProps) {
   const classes = {
-    win: 'badge-win shadow-[0_0_10px_rgba(0,230,118,0.2)]',
-    draw: 'badge-draw shadow-[0_0_10px_rgba(255,193,7,0.2)]',
-    loss: 'badge-loss shadow-[0_0_10px_rgba(255,68,68,0.2)]',
-    high: 'badge-high shadow-[0_0_10px_rgba(0,230,118,0.2)]',
-    medium: 'badge-medium shadow-[0_0_10px_rgba(255,193,7,0.2)]',
-    low: 'badge-low shadow-[0_0_10px_rgba(255,68,68,0.2)]',
-    neutral: 'bg-[var(--navy-700)] text-[var(--text-secondary)] border border-[var(--border)]',
+    win: 'badge-win',
+    draw: 'badge-draw',
+    loss: 'badge-loss',
+    high: 'badge-high',
+    medium: 'badge-medium',
+    low: 'badge-low',
+    neutral: 'bg-[#171B1F] text-[#9DA4AA] border border-[var(--border)]',
   };
 
   return (
     <span className={clsx(
-      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wide transition-all duration-200 hover:scale-105',
+      'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold tracking-wide',
       classes[variant]
     )}>
       {children}
@@ -88,12 +73,12 @@ export function Badge({ children, variant = 'neutral' }: BadgeProps) {
 
 export function FormDot({ result }: { result: 'W' | 'D' | 'L' }) {
   const colors = {
-    W: 'bg-[#00e676] text-black shadow-[0_0_12px_rgba(0,230,118,0.6)]',
-    D: 'bg-[#ffc107] text-black shadow-[0_0_12px_rgba(255,193,7,0.6)]',
-    L: 'bg-[#ff4444] text-white shadow-[0_0_12px_rgba(255,68,68,0.6)]',
+    W: 'bg-[#54C878] text-[#0B0D0F]',
+    D: 'bg-[#F59E0B] text-[#0B0D0F]',
+    L: 'bg-[#EF4444] text-[#F4F5F2]',
   };
   return (
-    <div className={clsx('w-7 h-7 rounded-full flex items-center justify-center text-xs font-black transition-transform duration-200 hover:scale-115 cursor-default', colors[result])}>
+    <div className={clsx('w-6 h-6 rounded flex items-center justify-center text-xs font-bold shrink-0', colors[result])}>
       {result}
     </div>
   );
@@ -103,15 +88,15 @@ export function FormDot({ result }: { result: 'W' | 'D' | 'L' }) {
 
 export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div className="glass-card border border-[#ff4444]/40 p-4 flex items-center justify-between gap-4 bg-[rgba(255,68,68,0.05)]">
+    <div className="glass-card border border-[#EF4444]/30 p-4 flex items-center justify-between gap-4 bg-[#EF4444]/05">
       <div className="flex items-center gap-3">
-        <span className="text-[#ff4444] text-xl animate-bounce">⚠</span>
-        <p className="text-[var(--text-secondary)] text-sm font-medium">{message}</p>
+        <span className="text-[#EF4444] text-base font-bold">⚠</span>
+        <p className="text-[#9DA4AA] text-sm font-medium">{message}</p>
       </div>
       {onRetry && (
         <button
           onClick={onRetry}
-          className="text-xs text-[#2979ff] hover:text-white font-semibold transition-all border border-[#2979ff]/40 rounded-xl px-4 py-1.5 hover:bg-[#2979ff]/20"
+          className="text-xs text-[#F4F5F2] hover:text-[#54C878] font-semibold transition-colors border border-[var(--border)] rounded-md px-3 py-1.5 bg-[#171B1F]"
         >
           Retry
         </button>
@@ -128,10 +113,10 @@ export function EmptyState({ title, message, icon = '⚽' }: {
   icon?: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 gap-3 text-center animate-fade-in">
-      <span className="text-5xl animate-float">{icon}</span>
-      <h3 className="text-[var(--text-primary)] font-bold text-xl">{title}</h3>
-      {message && <p className="text-[var(--text-secondary)] text-sm max-w-xs">{message}</p>}
+    <div className="flex flex-col items-center justify-center py-16 gap-2 text-center animate-fade-in">
+      <span className="text-4xl mb-1">{icon}</span>
+      <h3 className="text-[#F4F5F2] font-bold text-lg">{title}</h3>
+      {message && <p className="text-[#9DA4AA] text-sm max-w-sm">{message}</p>}
     </div>
   );
 }
@@ -144,12 +129,12 @@ export function SectionHeader({ title, subtitle, right }: {
   right?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
+    <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 mb-4">
       <div>
-        <h2 className="text-white font-extrabold text-2xl tracking-tight flex items-center gap-2">
+        <h2 className="text-[#F4F5F2] font-bold text-xl tracking-tight">
           {title}
         </h2>
-        {subtitle && <p className="text-[var(--text-secondary)] text-sm font-medium mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="text-[#9DA4AA] text-sm font-normal mt-0.5">{subtitle}</p>}
       </div>
       {right && <div className="self-start sm:self-auto">{right}</div>}
     </div>
@@ -159,10 +144,10 @@ export function SectionHeader({ title, subtitle, right }: {
 // ─── Loading Spinner ──────────────────────────────────────────────────────────
 
 export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
-  const sizes = { sm: 'w-4 h-4 border-2', md: 'w-8 h-8 border-3', lg: 'w-12 h-12 border-4' };
+  const sizes = { sm: 'w-4 h-4 border-2', md: 'w-6 h-6 border-2', lg: 'w-10 h-10 border-3' };
   return (
     <div className={clsx(
-      'rounded-full border-[var(--navy-600)] border-t-[#2979ff] border-r-[#7c3aed] animate-spin shadow-[0_0_16px_rgba(41,121,255,0.4)]',
+      'rounded-full border-[var(--border-strong)] border-t-[#54C878] animate-spin',
       sizes[size]
     )} />
   );
@@ -173,9 +158,9 @@ export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
 export function PageLoader() {
   return (
     <div className="flex items-center justify-center min-h-64 animate-fade-in">
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-3">
         <Spinner size="lg" />
-        <p className="text-[var(--text-secondary)] text-sm font-semibold tracking-wide">Loading MatchIQ Insights...</p>
+        <p className="text-[#9DA4AA] text-sm font-medium">Loading match data...</p>
       </div>
     </div>
   );

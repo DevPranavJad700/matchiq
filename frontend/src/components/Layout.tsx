@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { BarChart3, Home, Zap, Users, Calendar, TrendingUp } from 'lucide-react';
+import { Home, Zap, Users, Calendar, TrendingUp } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const navItems = [
@@ -14,29 +14,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen flex flex-col bg-ambient-mesh" style={{ background: 'var(--navy-950)' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-base)' }}>
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-[var(--border)] backdrop-blur-xl transition-colors duration-300"
-        style={{ background: 'rgba(8,14,26,0.85)' }}>
+      <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[#0B0D0F]/90 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-3 group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#2979ff] to-[#7c3aed] flex items-center justify-center shadow-[0_0_20px_rgba(41,121,255,0.5)] group-hover:scale-105 group-hover:shadow-[0_0_28px_rgba(41,121,255,0.7)] transition-all duration-300">
-                <BarChart3 size={20} className="text-white transform group-hover:rotate-6 transition-transform" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-extrabold text-xl tracking-tight text-white leading-none">
-                  Match<span className="gradient-text">IQ</span>
-                </span>
-                <span className="text-[10px] text-[var(--text-muted)] font-medium tracking-wider uppercase mt-0.5">
-                  Predictive Analytics
-                </span>
-              </div>
+            <Link to="/" className="flex items-center gap-2 group">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#54C878]" />
+              <span className="font-extrabold text-xl tracking-tight text-[#F4F5F2]">
+                Match<span className="text-[#54C878]">IQ</span>
+              </span>
             </Link>
 
             {/* Desktop nav */}
-            <nav className="hidden md:flex items-center gap-1.5 p-1 rounded-2xl bg-[rgba(13,21,39,0.6)] border border-[var(--border)]">
+            <nav className="hidden md:flex items-center gap-1">
               {navItems.map(({ to, label, icon: Icon }) => {
                 const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
                 return (
@@ -44,30 +36,33 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     key={to}
                     to={to}
                     className={clsx(
-                      'flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-sm font-semibold transition-all duration-200 relative',
+                      'flex items-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium transition-colors relative',
                       active
-                        ? 'text-white bg-gradient-to-r from-[rgba(41,121,255,0.25)] to-[rgba(124,58,237,0.25)] border border-[rgba(41,121,255,0.4)] shadow-[0_0_12px_rgba(41,121,255,0.2)]'
-                        : 'text-[var(--text-secondary)] hover:text-white hover:bg-[var(--glass-hover)]'
+                        ? 'text-[#F4F5F2] bg-[#171B1F]'
+                        : 'text-[#9DA4AA] hover:text-[#F4F5F2] hover:bg-[#111417]'
                     )}
                   >
-                    <Icon size={16} className={clsx(active ? 'text-[#60a5fa]' : 'text-[var(--text-muted)]')} />
+                    <Icon size={15} className={clsx(active ? 'text-[#54C878]' : 'text-[#5C636A]')} />
                     {label}
+                    {active && (
+                      <span className="absolute bottom-0 left-3.5 right-3.5 h-[2px] bg-[#54C878] rounded-full" />
+                    )}
                   </Link>
                 );
               })}
             </nav>
 
-            {/* Demo badge */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border border-[rgba(0,230,118,0.3)] bg-[rgba(0,230,118,0.08)] shadow-[0_0_12px_rgba(0,230,118,0.15)]">
-              <div className="w-2 h-2 rounded-full bg-[#00e676] animate-pulse" />
-              <span className="text-xs font-semibold text-[#00e676]">Live Model Ready</span>
+            {/* Product Status Indicator */}
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-md border border-[var(--border)] bg-[#111417]">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#54C878]" />
+              <span className="text-xs font-semibold text-[#9DA4AA]">Model Engine Active</span>
             </div>
           </div>
         </div>
 
         {/* Mobile nav */}
-        <div className="md:hidden border-t border-[var(--border)] bg-[rgba(13,21,39,0.95)]">
-          <div className="flex overflow-x-auto px-4 py-2 gap-1.5 no-scrollbar">
+        <div className="md:hidden border-t border-[var(--border)] bg-[#111417]">
+          <div className="flex overflow-x-auto px-4 py-2 gap-1 no-scrollbar">
             {navItems.map(({ to, label, icon: Icon }) => {
               const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
               return (
@@ -75,10 +70,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   key={to}
                   to={to}
                   className={clsx(
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all',
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-colors',
                     active
-                      ? 'bg-gradient-to-r from-[#2979ff] to-[#7c3aed] text-white shadow-md'
-                      : 'text-[var(--text-secondary)] hover:text-white'
+                      ? 'bg-[#171B1F] text-[#F4F5F2] border-b-2 border-[#54C878]'
+                      : 'text-[#9DA4AA]'
                   )}
                 >
                   <Icon size={14} />
@@ -96,9 +91,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[var(--border)] py-6 text-center bg-[rgba(8,14,26,0.6)] backdrop-blur-md">
-        <p className="text-[var(--text-muted)] text-xs font-medium">
-          MatchIQ Premier League Prediction Engine · Powered by FastAPI, React 19, XGBoost & SHAP XAI
+      <footer className="border-t border-[var(--border)] py-6 text-center bg-[#111417]">
+        <p className="text-[#5C636A] text-xs font-medium">
+          MatchIQ · Football intelligence, simplified · Data through 2024 season · Powered by Logistic Regression & XGBoost Engine
         </p>
       </footer>
     </div>

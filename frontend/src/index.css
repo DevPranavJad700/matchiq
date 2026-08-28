@@ -1,25 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --navy-950: #080e1a;
-  --navy-900: #0d1527;
-  --navy-800: #121d36;
-  --navy-700: #1a2845;
-  --navy-600: #243558;
-  --navy-500: #2e4270;
-  --accent-green: #00e676;
-  --accent-blue: #2979ff;
-  --accent-amber: #ffc107;
-  --accent-red: #ff4444;
-  --accent-purple: #a78bfa;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --bg-base: #0B0D0F;
+  --bg-surface: #111417;
+  --bg-elevated: #171B1F;
+  --bg-hover: #1E2329;
+  
+  --text-primary: #F4F5F2;
+  --text-secondary: #9DA4AA;
+  --text-muted: #5C636A;
+  
+  --accent-pitch: #54C878;
+  --accent-pitch-bg: rgba(84, 200, 120, 0.12);
+  --accent-blue: #3B82F6;
+  --accent-amber: #F59E0B;
+  --accent-red: #EF4444;
+  
   --border: rgba(255, 255, 255, 0.08);
-  --border-glow: rgba(41, 121, 255, 0.3);
-  --glass: rgba(15, 23, 42, 0.65);
-  --glass-hover: rgba(30, 41, 59, 0.75);
+  --border-strong: rgba(255, 255, 255, 0.16);
 }
 
 * {
@@ -32,7 +31,7 @@ html {
 
 body {
   font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--navy-950);
+  background: var(--bg-base);
   color: var(--text-primary);
   margin: 0;
   min-height: 100vh;
@@ -42,77 +41,70 @@ body {
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--navy-900); }
-::-webkit-scrollbar-thumb { background: var(--navy-600); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--navy-500); }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: #262B30; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #363C44; }
 
-/* Ambient background mesh */
-.bg-ambient-mesh {
-  background-image: 
-    radial-gradient(at 10% 15%, rgba(41, 121, 255, 0.12) 0px, transparent 50%),
-    radial-gradient(at 90% 25%, rgba(124, 58, 237, 0.10) 0px, transparent 50%),
-    radial-gradient(at 50% 75%, rgba(0, 230, 118, 0.08) 0px, transparent 50%);
-}
-
-/* Glass card */
-.glass-card {
-  background: var(--glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+/* Restrained Surface & Card Utilities */
+.glass-card, .app-card {
+  background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 12px;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
 }
 
-.glass-card:hover {
-  background: var(--glass-hover);
-  border-color: var(--border-glow);
-  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.5), 0 0 20px 0 rgba(41, 121, 255, 0.15);
-  transform: translateY(-2px);
+.glass-card:hover, .app-card:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
 }
 
 .glass-card-static {
-  background: var(--glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 12px;
 }
 
-/* Gradient text */
-.gradient-text {
-  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #34d399 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+/* Primary Pitch Green CTA */
+.btn-primary {
+  background: var(--accent-pitch);
+  color: #0B0D0F;
+  font-weight: 700;
+  border-radius: 8px;
+  transition: filter 0.15s ease, transform 0.15s ease;
 }
 
-.gradient-text-gold {
-  background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #d97706 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.btn-primary:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
-/* --- Animations --- */
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.96); }
-  to { opacity: 1; transform: scale(1); }
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
 }
 
-@keyframes floatSlow {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
+.animate-slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.shimmer {
+  background: linear-gradient(90deg, #171B1F 25%, #22272E 50%, #171B1F 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }
 
 @keyframes shimmer {
@@ -120,76 +112,22 @@ body {
   100% { background-position: 200% 0; }
 }
 
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 12px rgba(41, 121, 255, 0.25); }
-  50% { box-shadow: 0 0 28px rgba(41, 121, 255, 0.55); }
-}
+/* Form & Status Badges */
+.badge-win { background: rgba(84, 200, 120, 0.12); color: var(--accent-pitch); border: 1px solid rgba(84,200,120,0.25); }
+.badge-draw { background: rgba(245, 158, 11, 0.12); color: var(--accent-amber); border: 1px solid rgba(245,158,11,0.25); }
+.badge-loss { background: rgba(239, 68, 68, 0.12); color: var(--accent-red); border: 1px solid rgba(239,68,68,0.25); }
+.badge-high { background: rgba(84, 200, 120, 0.12); color: var(--accent-pitch); border: 1px solid rgba(84,200,120,0.25); }
+.badge-medium { background: rgba(245, 158, 11, 0.12); color: var(--accent-amber); border: 1px solid rgba(245,158,11,0.25); }
+.badge-low { background: rgba(239, 68, 68, 0.12); color: var(--accent-red); border: 1px solid rgba(239,68,68,0.25); }
 
-@keyframes border-spin {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
-}
-
-.animate-slide-up {
-  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-scale-in {
-  animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-float {
-  animation: floatSlow 4s ease-in-out infinite;
-}
-
-.shimmer {
-  background: linear-gradient(90deg, var(--navy-800) 25%, var(--navy-700) 50%, var(--navy-800) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.6s infinite;
-}
-
-.pulse-glow {
-  animation: pulse-glow 2.5s ease-in-out infinite;
-}
-
-/* Form result badges */
-.badge-win { background: rgba(0, 230, 118, 0.15); color: var(--accent-green); border: 1px solid rgba(0,230,118,0.3); }
-.badge-draw { background: rgba(255, 193, 7, 0.15); color: var(--accent-amber); border: 1px solid rgba(255,193,7,0.3); }
-.badge-loss { background: rgba(255, 68, 68, 0.15); color: var(--accent-red); border: 1px solid rgba(255,68,68,0.3); }
-.badge-high { background: rgba(0, 230, 118, 0.15); color: var(--accent-green); border: 1px solid rgba(0,230,118,0.3); }
-.badge-medium { background: rgba(255, 193, 7, 0.15); color: var(--accent-amber); border: 1px solid rgba(255,193,7,0.3); }
-.badge-low { background: rgba(255, 68, 68, 0.15); color: var(--accent-red); border: 1px solid rgba(255,68,68,0.3); }
-
-/* Table row hover */
+/* Table styling */
 .table-row-hover {
-  transition: background 0.2s;
+  transition: background-color 0.15s ease;
 }
 .table-row-hover:hover {
-  background: var(--glass-hover);
+  background-color: var(--bg-hover);
 }
 
-.gradient-border {
-  position: relative;
-  background: var(--navy-800);
-  border-radius: 16px;
-}
-.gradient-border::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: 17px;
-  background: linear-gradient(135deg, #2979ff, #7c3aed, #00e676);
-  background-size: 200% 200%;
-  animation: border-spin 4s ease infinite;
-  z-index: -1;
-}
-
-/* Stat number */
 .stat-number {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
