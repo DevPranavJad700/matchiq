@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.Python
+env/
+venv/
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# Environments
+.env
+.env.local
+.env.*.local
+
+# ML models (tracked separately via DVC or artifacts)
+ml/models/*.joblib
+ml/models/*.pkl
+# Keep the metadata JSON in git
+!ml/models/feature_metadata.json
+!ml/models/.gitkeep
+
+# Data (raw CSVs can be large)
+data/raw/*.csv
+data/raw/*.zip
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+
+# SQLite test DB
+backend/test.db
+*.db
+
+# Logs
+*.log
+logs/

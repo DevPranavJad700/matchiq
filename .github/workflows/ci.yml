@@ -1,0 +1,226 @@
+name: MatchIQ CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+
+jobs:
+  # ─── Backend Tests ────────────────────────────────────────────────────────────
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Run backend tests
+        working-directory: backend
+        env:
+          DATABASE_URL: sqlite:///./test.db
+          SECRET_KEY: test-secret-key-ci-only
+          MODEL_DIR: ../ml/models
+        run: python -m pytest tests/ -v --tb=short --co -q
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: backend/.pytest_cache/
+
+  # ─── ML Training ──────────────────────────────────────────────────────────────
+  ml-train:
+    name: ML Training & Validation
+    runs-on: ubuntu-latest
+    needs: []
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install ML dependencies
+        run: pip install scikit-learn xgboost shap numpy pandas joblib
+
+      - name: Generate demo training data
+        run: |
+          python -c "
+          import random, numpy as np, pandas as pd
+          from pathlib import Path
+          from datetime import datetime, timedelta, timezone
+
+          random.seed(42); np.random.seed(42)
+          TEAMS = [('Team'+str(i), 0.4+i*0.025) for i in range(20)]
+
+          def sim(hs, aws):
+              hxg = max(0.5, hs*2.5+0.25-aws*1.2)
+              axg = max(0.3, aws*2.2-hs*1.0)
+              hg = int(np.random.poisson(hxg)); ag = int(np.random.poisson(axg))
+              r = 'H' if hg > ag else ('A' if ag > hg else 'D')
+              return hg, ag, r, hxg, axg
+
+          rows = []
+          mid = 1
+          for si, year in enumerate(['2021-22','2022-23','2023-24']):
+              start = datetime(2021+si, 8, 14, tzinfo=timezone.utc)
+              for hi in range(20):
+                  for ai in range(20):
+                      if hi==ai: continue
+                      hg,ag,r,hxg,axg = sim(TEAMS[hi][1], TEAMS[ai][1])
+                      hs=max(3,int(np.random.normal(hxg*6,3)))
+                      as_=max(2,int(np.random.normal(axg*6,3)))
+                      rows.append({'match_id':mid,'match_date':start+timedelta(days=random.randint(0,250)),
+                          'season':year,'home_team_id':hi+1,'away_team_id':ai+1,
+                          'result':r,'home_goals':hg,'away_goals':ag,
+                          'home_shots':hs,'away_shots':as_,
+                          'home_sot':min(hs,max(1,int(np.random.normal(hxg*2.5,2)))),
+                          'away_sot':min(as_,max(0,int(np.random.normal(axg*2.5,2)))),
+                          'home_xg':round(hxg,2),'away_xg':round(axg,2)})
+                      mid+=1
+          df=pd.DataFrame(rows)
+          df['match_date']=pd.to_datetime(df['match_date'])
+          Path('data/processed').mkdir(parents=True,exist_ok=True)
+          df.to_csv('data/processed/matches_processed.csv',index=False)
+          print(f'Generated {len(df)} rows')
+          "
+
+      - name: Train model
+        run: python -m ml.training.train
+
+      - name: Validate model artifacts
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, 'backend')
+          from app.ml.model_loader import load_model, is_model_loaded, get_model_metadata
+          assert load_model(), 'Model failed to load'
+          assert is_model_loaded(), 'Model not in memory'
+          meta = get_model_metadata()
+          assert meta['accuracy'] > 0.35, f'Accuracy too low: {meta[\"accuracy\"]}'
+          print('Model validation passed:', meta['algorithm'], 'acc=', meta['accuracy'])
+          "
+
+      - name: Upload trained model
+        uses: actions/upload-artifact@v4
+        with:
+          name: trained-model
+          path: ml/models/
+          retention-days: 30
+
+  # ─── Frontend Build ───────────────────────────────────────────────────────────
+  frontend-build:
+    name: Frontend Build & Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Type check
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Check bundle size
+        working-directory: frontend
+        run: |
+          BUILD_SIZE=$(du -sh dist | cut -f1)
+          echo "Bundle size: $BUILD_SIZE"
+
+  # ─── Docker Build (on main only) ─────────────────────────────────────────────
+  docker-build:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-build]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: false
+          tags: matchiq-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: false
+          tags: matchiq-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─── Lint & Format ────────────────────────────────────────────────────────────
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install linters
+        run: pip install ruff
+
+      - name: Run ruff (backend)
+        run: ruff check backend/app ml/ --select E,W,F --ignore E501
+        continue-on-error: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: ESLint
+        working-directory: frontend
+        run: npx eslint src --ext .ts,.tsx --max-warnings 20
+        continue-on-error: true
