@@ -48,7 +48,7 @@ def test_database():
         db.add(season); db.flush()
         
         teams = []
-        team_names = ["Arsenal FC", "Chelsea FC", "Liverpool FC", "Manchester City", "Manchester United", "Tottenham Hotspur", "Newcastle United", "Aston Villa", "West Ham United", "Brighton & Hove Albion", "Brentford FC", "Fulham FC", "Crystal Palace", "Wolves", "Everton FC", "Nottingham Forest"]
+        team_names = ["Arsenal FC", "Aston Villa", "AFC Bournemouth", "Brentford FC", "Brighton & Hove Albion", "Chelsea FC", "Coventry City", "Crystal Palace", "Everton FC", "Fulham FC", "Hull City", "Ipswich Town", "Leeds United", "Liverpool FC", "Manchester City", "Manchester United", "Newcastle United", "Nottingham Forest", "Sunderland AFC", "Tottenham Hotspur"]
         for tname in team_names:
             t = Team(name=tname, short_name=tname[:3].upper(), league_id=league.id, country="England")
             db.add(t)

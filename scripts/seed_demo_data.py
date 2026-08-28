@@ -45,26 +45,26 @@ SEASONS = ["2021-22", "2022-23", "2023-24"]
 # 20 Premier League-style teams with realistic strength ratings (0-1)
 # Higher strength → higher attack, lower goals conceded
 TEAMS = [
-    {"name": "Arsenal FC", "short_name": "ARS", "strength": 0.85},
-    {"name": "Chelsea FC", "short_name": "CHE", "strength": 0.80},
+    {"name": "Arsenal FC", "short_name": "ARS", "strength": 0.86},
+    {"name": "Aston Villa", "short_name": "AVL", "strength": 0.73},
+    {"name": "AFC Bournemouth", "short_name": "BOU", "strength": 0.60},
+    {"name": "Brentford FC", "short_name": "BRE", "strength": 0.65},
+    {"name": "Brighton & Hove Albion", "short_name": "BHA", "strength": 0.70},
+    {"name": "Chelsea FC", "short_name": "CHE", "strength": 0.81},
+    {"name": "Coventry City", "short_name": "COV", "strength": 0.50},
+    {"name": "Crystal Palace", "short_name": "CRY", "strength": 0.58},
+    {"name": "Everton FC", "short_name": "EVE", "strength": 0.57},
+    {"name": "Fulham FC", "short_name": "FUL", "strength": 0.62},
+    {"name": "Hull City", "short_name": "HUL", "strength": 0.54},
+    {"name": "Ipswich Town", "short_name": "IPS", "strength": 0.52},
+    {"name": "Leeds United", "short_name": "LEE", "strength": 0.55},
     {"name": "Liverpool FC", "short_name": "LIV", "strength": 0.88},
     {"name": "Manchester City", "short_name": "MCI", "strength": 0.92},
     {"name": "Manchester United", "short_name": "MUN", "strength": 0.78},
+    {"name": "Newcastle United", "short_name": "NEW", "strength": 0.76},
+    {"name": "Nottingham Forest", "short_name": "NFO", "strength": 0.56},
+    {"name": "Sunderland AFC", "short_name": "SUN", "strength": 0.53},
     {"name": "Tottenham Hotspur", "short_name": "TOT", "strength": 0.75},
-    {"name": "Newcastle United", "short_name": "NEW", "strength": 0.72},
-    {"name": "Aston Villa", "short_name": "AVL", "strength": 0.70},
-    {"name": "West Ham United", "short_name": "WHU", "strength": 0.65},
-    {"name": "Brighton & Hove Albion", "short_name": "BHA", "strength": 0.68},
-    {"name": "Brentford FC", "short_name": "BRE", "strength": 0.62},
-    {"name": "Fulham FC", "short_name": "FUL", "strength": 0.60},
-    {"name": "Crystal Palace", "short_name": "CRY", "strength": 0.58},
-    {"name": "Wolves", "short_name": "WOL", "strength": 0.57},
-    {"name": "Everton FC", "short_name": "EVE", "strength": 0.55},
-    {"name": "Nottingham Forest", "short_name": "NFO", "strength": 0.54},
-    {"name": "Leicester City", "short_name": "LEI", "strength": 0.60},
-    {"name": "Southampton FC", "short_name": "SOU", "strength": 0.45},
-    {"name": "Burnley FC", "short_name": "BUR", "strength": 0.42},
-    {"name": "Luton Town", "short_name": "LUT", "strength": 0.40},
 ]
 
 
@@ -315,10 +315,10 @@ def seed_to_db(reset: bool = False) -> None:
             key=lambda x: (-x[1]["points"], -x[1]["goal_difference"], -x[1]["goals_for"])
         )
         for position, (team_id, stats) in enumerate(sorted_teams, start=1):
+            stats["position"] = position
             db.add(Standing(
                 season_id=season.id,
                 team_id=team_id,
-                position=position,
                 **stats,
             ))
 
