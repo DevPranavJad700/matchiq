@@ -28,6 +28,11 @@ jobs:
       - name: Install backend dependencies
         run: pip install -r backend/requirements.txt
 
+      - name: Generate dataset and model for tests
+        run: |
+          python scripts/fetch_real_data.py
+          python -m ml.training.train
+
       - name: Run backend tests
         working-directory: backend
         env:
