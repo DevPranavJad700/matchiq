@@ -257,7 +257,7 @@ def save_dataset_and_provenance(df: pd.DataFrame) -> dict:
     last_row = df.iloc[-1]
 
     provenance = {
-        "dataset_name": "Premier League Match Dataset (2018-2024, 6 Seasons)",
+        "dataset_name": f"Premier League Match Dataset ({seasons[0]} to {seasons[-1]}, {len(seasons)} Seasons)",
         "source_urls": DATA_URLS,
         "retrieved_at": datetime.now(timezone.utc).isoformat(),
         "sha256": sha256_hash,

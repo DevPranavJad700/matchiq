@@ -1,5 +1,5 @@
 {
-  "dataset_name": "Premier League Match Dataset (2018-2024, 6 Seasons)",
+  "dataset_name": "Premier League Match Dataset (2013-14 to 2024-25, 12 Seasons)",
   "source_urls": {
     "2013-14": "https://www.football-data.co.uk/mmz4281/1314/E0.csv",
     "2014-15": "https://www.football-data.co.uk/mmz4281/1415/E0.csv",
@@ -14,7 +14,7 @@
     "2023-24": "https://www.football-data.co.uk/mmz4281/2324/E0.csv",
     "2024-25": "https://www.football-data.co.uk/mmz4281/2425/E0.csv"
   },
-  "retrieved_at": "2026-08-29T08:29:32.689424+00:00",
+  "retrieved_at": "2026-08-29T08:36:31.201051+00:00",
   "sha256": "66e9b3fa43db5107f703332f473777f963a28d6d0013f9eaecca782b64dd5d14",
   "total_matches": 4560,
   "total_teams": 35,
