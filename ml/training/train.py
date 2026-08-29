@@ -28,9 +28,13 @@ from sklearn.metrics import (
     f1_score,
     log_loss,
 )
-from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import (
+    GradientBoostingClassifier,
+    RandomForestClassifier,
+    VotingClassifier,
+)
 from sklearn.pipeline import Pipeline
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import StandardScaler
 import xgboost
 from xgboost import XGBClassifier
 
@@ -98,34 +102,46 @@ def seasonal_chronological_split(
 
 def build_models() -> dict:
     """Define all candidate models with appropriate hyperparameters."""
+    lr_pipe = Pipeline([
+        ("scaler", StandardScaler()),
+        ("clf", LogisticRegression(
+            max_iter=1000,
+            C=0.2,
+            random_state=42,
+        )),
+    ])
+    rf_clf = RandomForestClassifier(
+        n_estimators=300,
+        max_depth=6,
+        min_samples_leaf=6,
+        random_state=42,
+        n_jobs=-1,
+    )
+    xgb_clf = XGBClassifier(
+        n_estimators=150,
+        max_depth=3,
+        learning_rate=0.03,
+        subsample=0.8,
+        colsample_bytree=0.7,
+        eval_metric="mlogloss",
+        random_state=42,
+        n_jobs=-1,
+    )
+    ensemble_clf = VotingClassifier(
+        estimators=[
+            ("rf", RandomForestClassifier(n_estimators=300, max_depth=6, min_samples_leaf=6, random_state=42, n_jobs=-1)),
+            ("xgb", XGBClassifier(n_estimators=150, max_depth=3, learning_rate=0.03, subsample=0.8, colsample_bytree=0.7, eval_metric="mlogloss", random_state=42, n_jobs=-1)),
+            ("gb", GradientBoostingClassifier(n_estimators=120, max_depth=3, learning_rate=0.03, subsample=0.8, random_state=42)),
+        ],
+        voting="soft",
+        weights=[1.2, 1.2, 1.0],
+    )
+
     return {
-        "logistic_regression": Pipeline([
-            ("scaler", StandardScaler()),
-            ("clf", LogisticRegression(
-                max_iter=1000,
-                C=0.5,
-                class_weight="balanced",
-                random_state=42,
-            )),
-        ]),
-        "random_forest": RandomForestClassifier(
-            n_estimators=200,
-            max_depth=6,
-            min_samples_leaf=10,
-            class_weight="balanced",
-            random_state=42,
-            n_jobs=-1,
-        ),
-        "xgboost": XGBClassifier(
-            n_estimators=250,
-            max_depth=4,
-            learning_rate=0.03,
-            subsample=0.8,
-            colsample_bytree=0.8,
-            eval_metric="mlogloss",
-            random_state=42,
-            n_jobs=-1,
-        ),
+        "logistic_regression": lr_pipe,
+        "random_forest": rf_clf,
+        "xgboost": xgb_clf,
+        "voting_ensemble": ensemble_clf,
     }
 
 
@@ -229,7 +245,19 @@ def extract_feature_importance(model, name: str) -> dict:
     """Extract feature importance or regression coefficients from model."""
     importances = {}
     try:
-        if name == "logistic_regression":
+        if hasattr(model, "named_estimators_"):
+            # VotingClassifier ensemble: average importance across estimators
+            est_importances = []
+            for est_name, est in model.named_estimators_.items():
+                if hasattr(est, "feature_importances_"):
+                    est_importances.append(est.feature_importances_)
+                elif hasattr(est, "named_steps") and hasattr(est.named_steps.get("clf"), "coef_"):
+                    est_importances.append(np.mean(np.abs(est.named_steps["clf"].coef_), axis=0))
+            if est_importances:
+                avg_imp = np.mean(est_importances, axis=0)
+                for fname, val in zip(FEATURE_NAMES, avg_imp):
+                    importances[fname] = round(float(val), 4)
+        elif name == "logistic_regression" and hasattr(model, "named_steps"):
             clf = model.named_steps["clf"]
             coefs = np.mean(np.abs(clf.coef_), axis=0)
             for fname, val in zip(FEATURE_NAMES, coefs):
@@ -263,7 +291,7 @@ def save_model_and_manifest(
     logger.info(f"Model saved to {model_path} (SHA-256: {model_sha256[:16]}...)")
 
     training_time = datetime.now(timezone.utc).isoformat()
-    version_tag = f"{name}-v{datetime.now(timezone.utc).strftime('%Y%m%d')}"
+    version_tag = f"{name}-v{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}"
 
     # 2. Save feature metadata
     meta = {
@@ -381,17 +409,29 @@ def _register_model_version(meta: dict) -> None:
         for m in prev_active:
             m.is_active = False
 
-        mv = ModelVersion(
-            name=meta["name"],
-            version_tag=meta["version_tag"],
-            algorithm=meta["algorithm"],
-            accuracy=meta["accuracy"],
-            f1_score=meta["f1_score"],
-            log_loss=meta["log_loss"],
-            features_json=json.dumps(meta["features"]),
-            is_active=True,
-        )
-        db.add(mv)
+        existing = db.execute(
+            select(ModelVersion).where(ModelVersion.version_tag == meta["version_tag"])
+        ).scalar_one_or_none()
+
+        if existing:
+            existing.accuracy = meta["accuracy"]
+            existing.f1_score = meta["f1_score"]
+            existing.log_loss = meta["log_loss"]
+            existing.features_json = json.dumps(meta["features"])
+            existing.is_active = True
+        else:
+            mv = ModelVersion(
+                name=meta["name"],
+                version_tag=meta["version_tag"],
+                algorithm=meta["algorithm"],
+                accuracy=meta["accuracy"],
+                f1_score=meta["f1_score"],
+                log_loss=meta["log_loss"],
+                features_json=json.dumps(meta["features"]),
+                is_active=True,
+            )
+            db.add(mv)
+
         db.commit()
         db.close()
         logger.info(f"Model version '{meta['version_tag']}' registered in database")

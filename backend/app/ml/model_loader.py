@@ -207,6 +207,12 @@ def _feature_to_description(feature: str, value: float, impact: float) -> str:
         "h2h_away_wins": f"Away team won {value:.0f} of last H2H meetings",
         "home_home_win_rate": f"Home team wins {value*100:.0f}% of home matches",
         "away_away_win_rate": f"Away team wins {value*100:.0f}% of away matches",
+        "home_elo": f"Home team Elo power rating: {value:.0f}",
+        "away_elo": f"Away team Elo power rating: {value:.0f}",
+        "elo_diff": f"Home Elo advantage of {value:.1f} pts (inc. home field)",
+        "home_rest_days": f"Home team had {value:.0f} days of recovery",
+        "away_rest_days": f"Away team had {value:.0f} days of recovery",
+        "rest_diff": f"Rest advantage of {value:+.0f} days",
     }
 
     base = label_map.get(feature, f"{feature.replace('_', ' ').title()}: {value:.3f}")

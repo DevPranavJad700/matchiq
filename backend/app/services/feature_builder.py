@@ -47,6 +47,13 @@ FEATURE_NAMES = [
     "away_away_goals_avg",
     "away_league_position",
     "away_points",
+    # Dynamic Elo & Rest Features
+    "home_elo",
+    "away_elo",
+    "elo_diff",
+    "home_rest_days",
+    "away_rest_days",
+    "rest_diff",
     # H2H
     "h2h_home_wins",
     "h2h_away_wins",
@@ -89,6 +96,8 @@ class FeatureBuilderService:
             as_of = datetime.now(timezone.utc)
 
         standings_info = self._compute_standings_and_points(home_team_id, away_team_id, as_of)
+        elo_rest_info = self._compute_dynamic_elo_and_rest(home_team_id, away_team_id, as_of)
+
         home_features = self._compute_team_features(
             home_team_id, is_home=True, as_of=as_of,
             pos=standings_info["home_league_position"], pts=standings_info["home_points"]
@@ -109,9 +118,90 @@ class FeatureBuilderService:
             "xg_diff": home_features["home_avg_xg"] - away_features["away_avg_xg"],
         }
 
-        combined = {**home_features, **away_features, **h2h_features, **diff_features}
+        combined = {**home_features, **away_features, **elo_rest_info, **h2h_features, **diff_features}
         vector = np.array([[combined.get(f, 0.0) for f in FEATURE_NAMES]], dtype=np.float64)
         return vector
+
+    def _compute_dynamic_elo_and_rest(
+        self, home_team_id: int, away_team_id: int, as_of: datetime
+    ) -> dict:
+        """Compute pre-match dynamic Elo ratings and rest days as of a given timestamp."""
+        K = 28.0
+        HOME_ADV = 65.0
+
+        if as_of.tzinfo is None:
+            as_of = as_of.replace(tzinfo=timezone.utc)
+        else:
+            as_of = as_of.astimezone(timezone.utc)
+
+        # Query all completed matches before as_of strictly ordered by match_date
+        matches = list(self.db.execute(
+            select(Match)
+            .where(
+                Match.result.isnot(None),
+                Match.match_date < as_of,
+            )
+            .order_by(Match.match_date)
+        ).scalars().all())
+
+        elo_ratings: dict[int, float] = {}
+        last_match_dates: dict[int, datetime] = {}
+
+        for m in matches:
+            ht = m.home_team_id
+            at = m.away_team_id
+            mdate = m.match_date
+            if mdate.tzinfo is None:
+                mdate = mdate.replace(tzinfo=timezone.utc)
+            else:
+                mdate = mdate.astimezone(timezone.utc)
+            res = m.result
+
+            r_h = elo_ratings.get(ht, 1500.0)
+            r_a = elo_ratings.get(at, 1500.0)
+            dr = (r_h + HOME_ADV) - r_a
+
+            if res in ("H", "D", "A"):
+                e_h = 1.0 / (1.0 + 10.0 ** (-dr / 400.0))
+                e_a = 1.0 - e_h
+                if res == "H":
+                    s_h, s_a = 1.0, 0.0
+                elif res == "A":
+                    s_h, s_a = 0.0, 1.0
+                else:
+                    s_h, s_a = 0.5, 0.5
+
+                elo_ratings[ht] = r_h + K * (s_h - e_h)
+                elo_ratings[at] = r_a + K * (s_a - e_a)
+
+            last_match_dates[ht] = mdate
+            last_match_dates[at] = mdate
+
+        # Compute as_of values for requested teams
+        home_elo = float(elo_ratings.get(home_team_id, 1500.0))
+        away_elo = float(elo_ratings.get(away_team_id, 1500.0))
+        elo_diff = float((home_elo + HOME_ADV) - away_elo)
+
+        if home_team_id in last_match_dates:
+            h_rest = min(21.0, max(1.0, float((as_of - last_match_dates[home_team_id]).days)))
+        else:
+            h_rest = 7.0
+
+        if away_team_id in last_match_dates:
+            a_rest = min(21.0, max(1.0, float((as_of - last_match_dates[away_team_id]).days)))
+        else:
+            a_rest = 7.0
+
+        rest_diff = float(h_rest - a_rest)
+
+        return {
+            "home_elo": home_elo,
+            "away_elo": away_elo,
+            "elo_diff": elo_diff,
+            "home_rest_days": h_rest,
+            "away_rest_days": a_rest,
+            "rest_diff": rest_diff,
+        }
 
     def _compute_standings_and_points(
         self, home_team_id: int, away_team_id: int, as_of: datetime

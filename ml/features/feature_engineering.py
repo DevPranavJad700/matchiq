@@ -59,11 +59,20 @@ FEATURE_NAMES = [
     "away_away_goals_avg",
     "away_league_position",
     "away_points",
+    # Dynamic Elo & Rest Features
+    "home_elo",
+    "away_elo",
+    "elo_diff",
+    "home_rest_days",
+    "away_rest_days",
+    "rest_diff",
+    # H2H
     "h2h_home_wins",
     "h2h_away_wins",
     "h2h_draws",
     "h2h_home_goals_avg",
     "h2h_away_goals_avg",
+    # Difference features
     "form_diff",
     "attack_diff",
     "defence_diff",
@@ -326,6 +335,81 @@ def _compute_dynamic_season_standings(df: pd.DataFrame) -> dict[int, dict]:
     return standings_by_match
 
 
+def _compute_dynamic_elo_and_rest(df: pd.DataFrame) -> dict[int, dict]:
+    """Compute pre-match dynamic Elo ratings and rest days per match (zero future leakage).
+
+    Elo parameterization:
+    - Base rating: 1500.0
+    - K-factor: 28.0
+    - Home advantage: 65.0
+
+    Rest days:
+    - Days since team's previous match (capped at 21.0, default 7.0 for opening matches).
+    """
+    K = 28.0
+    HOME_ADV = 65.0
+
+    all_teams = set(df["home_team_id"].unique()) | set(df["away_team_id"].unique())
+    elo_ratings = {tid: 1500.0 for tid in all_teams}
+    last_match_dates = {}
+
+    match_features = {}
+    sorted_matches = df.sort_values("match_date").copy()
+
+    for _, match in sorted_matches.iterrows():
+        mid = match["match_id"]
+        ht = match["home_team_id"]
+        at = match["away_team_id"]
+        mdate = pd.to_datetime(match["match_date"])
+        result = match.get("result")
+
+        # 1. Pre-match Elo ratings
+        r_h = float(elo_ratings.get(ht, 1500.0))
+        r_a = float(elo_ratings.get(at, 1500.0))
+        elo_diff = float((r_h + HOME_ADV) - r_a)
+
+        # 2. Pre-match Rest days
+        if ht in last_match_dates:
+            h_rest = min(21.0, max(1.0, float((mdate - last_match_dates[ht]).days)))
+        else:
+            h_rest = 7.0
+
+        if at in last_match_dates:
+            a_rest = min(21.0, max(1.0, float((mdate - last_match_dates[at]).days)))
+        else:
+            a_rest = 7.0
+
+        rest_diff = float(h_rest - a_rest)
+
+        match_features[mid] = {
+            "home_elo": r_h,
+            "away_elo": r_a,
+            "elo_diff": elo_diff,
+            "home_rest_days": h_rest,
+            "away_rest_days": a_rest,
+            "rest_diff": rest_diff,
+        }
+
+        # 3. Post-match Elo update (for future matches only)
+        if pd.notna(result) and result in ("H", "D", "A"):
+            e_h = 1.0 / (1.0 + 10.0 ** (-elo_diff / 400.0))
+            e_a = 1.0 - e_h
+            if result == "H":
+                s_h, s_a = 1.0, 0.0
+            elif result == "A":
+                s_h, s_a = 0.0, 1.0
+            else:
+                s_h, s_a = 0.5, 0.5
+
+            elo_ratings[ht] = r_h + K * (s_h - e_h)
+            elo_ratings[at] = r_a + K * (s_a - e_a)
+
+        last_match_dates[ht] = mdate
+        last_match_dates[at] = mdate
+
+    return match_features
+
+
 def compute_features(df: pd.DataFrame, standings: pd.DataFrame | None = None) -> pd.DataFrame:
     """Main feature engineering pipeline.
 
@@ -358,6 +442,10 @@ def compute_features(df: pd.DataFrame, standings: pd.DataFrame | None = None) ->
     # Pre-match season standings
     logger.info("Computing dynamic per-season pre-match standings...")
     dynamic_standings = _compute_dynamic_season_standings(df)
+
+    # Dynamic Elo and Rest days
+    logger.info("Computing dynamic Elo ratings and rest days...")
+    elo_rest_map = _compute_dynamic_elo_and_rest(df)
 
     # Assemble match-level feature frame
     feature_rows = []
@@ -441,6 +529,13 @@ def compute_features(df: pd.DataFrame, standings: pd.DataFrame | None = None) ->
             "away_league_position": away_pos,
             "away_points": away_pts,
         }
+
+        # Elo & Rest features
+        er_data = elo_rest_map.get(mid, {
+            "home_elo": 1500.0, "away_elo": 1500.0, "elo_diff": 65.0,
+            "home_rest_days": 7.0, "away_rest_days": 7.0, "rest_diff": 0.0,
+        })
+        row.update(er_data)
 
         # H2H
         if mid in h2h_df.index:

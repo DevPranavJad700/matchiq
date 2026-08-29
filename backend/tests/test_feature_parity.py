@@ -80,11 +80,11 @@ def db_session():
 def test_feature_names_match():
     """Ensure training and serving feature name lists are identical."""
     assert FEATURE_NAMES == ML_FEATURE_NAMES
-    assert len(FEATURE_NAMES) == 39
+    assert len(FEATURE_NAMES) == 45
 
 
 def test_feature_builder_parity(db_session):
-    """Test that FeatureBuilderService produces a valid 1x39 feature vector matching training schema."""
+    """Test that FeatureBuilderService produces a valid 1x45 feature vector matching training schema."""
     service = FeatureBuilderService(db_session)
     vector = service.build_features_for_prediction(
         home_team_id=1,
@@ -93,7 +93,7 @@ def test_feature_builder_parity(db_session):
     )
 
     assert isinstance(vector, np.ndarray)
-    assert vector.shape == (1, 39)
+    assert vector.shape == (1, 45)
     assert not np.isnan(vector).any()
 
 

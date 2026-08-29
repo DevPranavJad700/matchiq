@@ -161,7 +161,7 @@ def test_real_fixture_training_serving_parity(real_fixtures_db):
     batch_vec = batch_row[FEATURE_NAMES].values.astype(np.float64)[0]
 
     # Verify matching shape and no NaNs
-    assert serving_vec.shape == (39,)
+    assert serving_vec.shape == (45,)
     assert not np.isnan(serving_vec).any()
     assert not np.isnan(batch_vec).any()
 

@@ -124,7 +124,9 @@ npm run dev                                   # Starts at http://localhost:5173
 
 ### Feature Engineering (Anti-Leakage Design)
 
-All 39 features use strict temporal anti-leakage with `.shift(1)`:
+All 45 features use strict temporal anti-leakage with `.shift(1)`:
+- **Dynamic Elo Power Ratings:** Sequential Elo ratings updated after each match ($K=28.0$, Home Field Advantage $+65.0$) with zero future leakage (`home_elo`, `away_elo`, `elo_diff`).
+- **Schedule Rest Days:** Recovery duration and schedule congestion differentials (`home_rest_days`, `away_rest_days`, `rest_diff`).
 - **Dynamic Pre-Match Season Standings:** Pre-match league positions (1st–20th) and points in the current season are calculated dynamically from matches played strictly before the kickoff date.
 - **Form Metrics:** Rolling 5-match points, wins, draws, losses, and goal difference.
 - **Attack/Defence Strength:** Rolling 10-match goals scored, goals conceded, shots, shots on target, and estimated xG proxy.
@@ -140,16 +142,17 @@ Models are evaluated on 2,280 authentic Premier League matches with a strict sea
 ```
 Model                  Validation Acc  Validation F1  Validation LogLoss  Validation Brier  Status
 Naive Majority Class   47.95%          0.3106         1.0986              0.6802            Baseline
-Logistic Regression    44.15%          0.4645         1.0473              0.6281            Candidate
-XGBoost Classifier     50.88%          0.4630         1.0099              0.6014            Runner-up
-Random Forest          50.88%          0.5223         1.0125              0.6059            ← Selected Winner
+Logistic Regression    53.22%          0.4901         0.9927              0.5891            Candidate
+XGBoost Classifier     56.14%          0.4981         0.9710              0.5754            Runner-up
+Voting Ensemble        56.43%          0.4999         0.9693              0.5743            Candidate
+Random Forest          56.14%          0.4920         0.9664              0.5723            ← Selected Winner
 ```
 
-**Final Evaluation on Untouched Chronological Test Set (Random Forest):**
-* **Test Accuracy:** **50.58%** (vs Baseline 46.49%)
-* **Test Weighted F1:** **0.5032** (vs Baseline 0.2951)
-* **Test Log Loss:** **0.9832** (vs Baseline 1.0532)
-* **Test Brier Score:** **0.5835** (vs Baseline 0.6362)
+**Final Evaluation on Untouched Chronological Test Set (Random Forest with Dynamic Elo):**
+* **Test Accuracy:** **57.02%** (vs Baseline 46.49%)
+* **Test Weighted F1:** **0.5011** (vs Baseline 0.2951)
+* **Test Log Loss:** **0.9441** (vs Baseline 1.0532)
+* **Test Brier Score:** **0.5562** (vs Baseline 0.6362)
 
 ---
 
