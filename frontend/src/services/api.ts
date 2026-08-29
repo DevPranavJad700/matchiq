@@ -81,7 +81,10 @@ export const api = {
   // ─── Leagues ─────────────────────────────────────────────────────────────────
   getLeagues: () => fetchJSON<League[]>('/leagues'),
   getLeague: (id: number) => fetchJSON<League>(`/leagues/${id}`),
-  getLeagueAnalytics: (id: number) => fetchJSON<LeagueAnalytics>(`/analytics/league/${id}`),
+  getLeagueSeasons: (id: number) =>
+    fetchJSON<{ id: number; year: string; league_id: number }[]>(`/leagues/${id}/seasons`),
+  getLeagueAnalytics: (id: number, season?: string) =>
+    fetchJSON<LeagueAnalytics>(`/analytics/league/${id}${season ? `?season=${encodeURIComponent(season)}` : ''}`),
 
   // ─── Predictions ─────────────────────────────────────────────────────────────
   predict: (homeTeamId: number, awayTeamId: number) =>

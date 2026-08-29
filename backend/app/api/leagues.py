@@ -31,10 +31,19 @@ def get_league(league_id: int, db: Session = Depends(get_db)):
     return league
 
 
+@router.get("/{league_id}/seasons")
+def list_league_seasons(league_id: int, db: Session = Depends(get_db)):
+    """List all available seasons for a league."""
+    repo = LeagueRepository(db)
+    seasons = repo.get_seasons(league_id)
+    return [{"id": s.id, "year": s.year, "league_id": s.league_id} for s in seasons]
+
+
 @analytics_router.get("/league/{league_id}")
 def get_league_analytics(
     league_id: int,
     season_id: int | None = Query(None),
+    season: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
     """Get league analytics including standings table, top scorers, best defences."""
@@ -43,7 +52,10 @@ def get_league_analytics(
     if league is None:
         raise HTTPException(status_code=404, detail=f"League {league_id} not found")
 
-    standings = repo.get_standings(league_id, season_id=season_id)
+    all_seasons = repo.get_seasons(league_id)
+    available_seasons = [s.year for s in all_seasons]
+
+    standings = repo.get_standings(league_id, season_id=season_id, season_year=season)
 
     table = [
         LeagueTableRow(
@@ -74,7 +86,7 @@ def get_league_analytics(
         key=lambda x: x["avg_conceded"],
     )[:5]
 
-    season_year = standings[0].season.year if standings else "N/A"
+    season_year = standings[0].season.year if standings else (season or "N/A")
 
     return {
         "league": LeagueOut(
@@ -85,6 +97,7 @@ def get_league_analytics(
             created_at=league.created_at,
         ),
         "season": season_year,
+        "available_seasons": available_seasons,
         "table": [r.model_dump() for r in table],
         "top_scorers_teams": top_scorers,
         "best_defences_teams": best_defences,

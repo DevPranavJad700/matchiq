@@ -208,6 +208,7 @@ export interface LeagueTableRow {
 export interface LeagueAnalytics {
   league: League;
   season: string;
+  available_seasons?: string[];
   table: LeagueTableRow[];
   top_scorers_teams: { team: string; avg_goals: number }[];
   best_defences_teams: { team: string; avg_conceded: number }[];

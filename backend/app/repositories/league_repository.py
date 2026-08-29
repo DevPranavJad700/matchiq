@@ -18,8 +18,28 @@ class LeagueRepository:
             select(League).where(League.id == league_id)
         ).scalar_one_or_none()
 
-    def get_standings(self, league_id: int, season_id: int | None = None) -> list[Standing]:
-        """Get standings ordered by position for a league."""
+    def get_seasons(self, league_id: int) -> list[Season]:
+        """Get all seasons for a league ordered by most recent first."""
+        return list(self.db.execute(
+            select(Season)
+            .where(Season.league_id == league_id)
+            .order_by(Season.id.desc())
+        ).scalars().all())
+
+    def get_standings(
+        self,
+        league_id: int,
+        season_id: int | None = None,
+        season_year: str | None = None,
+    ) -> list[Standing]:
+        """Get standings ordered by position for a league and season."""
+        if season_year:
+            matched_season = self.db.execute(
+                select(Season).where(Season.league_id == league_id, Season.year == season_year)
+            ).scalar_one_or_none()
+            if matched_season:
+                season_id = matched_season.id
+
         # Get latest season if not specified
         if season_id is None:
             latest_season = self.db.execute(
