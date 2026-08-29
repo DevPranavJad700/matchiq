@@ -128,13 +128,27 @@ export function AnalyticsPage() {
             </h2>
             <span className="text-xs text-[#9DA4AA] font-mono">{analytics.season}</span>
           </div>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={top_scorers_teams.slice(0, 8)} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-              <XAxis type="number" tick={{ fill: '#9DA4AA', fontSize: 11 }} />
-              <YAxis dataKey="team" type="category" width={130} tick={{ fill: '#F4F5F2', fontSize: 11 }} />
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={top_scorers_teams.slice(0, 8)} layout="vertical" margin={{ top: 5, right: 25, left: 5, bottom: 15 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" horizontal={false} />
+              <XAxis
+                type="number"
+                stroke="#9DA4AA"
+                tick={{ fill: '#F4F5F2', fontSize: 12, fontWeight: 600 }}
+                tickLine={{ stroke: '#5C636A' }}
+                axisLine={{ stroke: 'rgba(255,255,255,0.15)' }}
+              />
+              <YAxis
+                dataKey="team"
+                type="category"
+                width={145}
+                stroke="#9DA4AA"
+                tick={{ fill: '#F4F5F2', fontSize: 12, fontWeight: 600 }}
+                tickLine={false}
+                axisLine={{ stroke: 'rgba(255,255,255,0.15)' }}
+              />
               <Tooltip
-                contentStyle={{ background: '#171B1F', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, fontSize: 12 }}
+                contentStyle={{ background: '#171B1F', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, fontSize: 12, color: '#F4F5F2' }}
                 formatter={(v) => [`${(Number(v) || 0).toFixed(2)} goals/match`, 'Attack'] as [string, string]}
               />
               <Bar dataKey="avg_goals" radius={[0, 4, 4, 0]}>
@@ -154,13 +168,27 @@ export function AnalyticsPage() {
             </h2>
             <span className="text-xs text-[#9DA4AA] font-mono">{analytics.season}</span>
           </div>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={best_defences_teams.slice(0, 8)} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-              <XAxis type="number" tick={{ fill: '#9DA4AA', fontSize: 11 }} />
-              <YAxis dataKey="team" type="category" width={130} tick={{ fill: '#F4F5F2', fontSize: 11 }} />
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={best_defences_teams.slice(0, 8)} layout="vertical" margin={{ top: 5, right: 25, left: 5, bottom: 15 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" horizontal={false} />
+              <XAxis
+                type="number"
+                stroke="#9DA4AA"
+                tick={{ fill: '#F4F5F2', fontSize: 12, fontWeight: 600 }}
+                tickLine={{ stroke: '#5C636A' }}
+                axisLine={{ stroke: 'rgba(255,255,255,0.15)' }}
+              />
+              <YAxis
+                dataKey="team"
+                type="category"
+                width={145}
+                stroke="#9DA4AA"
+                tick={{ fill: '#F4F5F2', fontSize: 12, fontWeight: 600 }}
+                tickLine={false}
+                axisLine={{ stroke: 'rgba(255,255,255,0.15)' }}
+              />
               <Tooltip
-                contentStyle={{ background: '#171B1F', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, fontSize: 12 }}
+                contentStyle={{ background: '#171B1F', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, fontSize: 12, color: '#F4F5F2' }}
                 formatter={(v) => [`${(Number(v) || 0).toFixed(2)} conceded/match`, 'Defence'] as [string, string]}
               />
               <Bar dataKey="avg_conceded" radius={[0, 4, 4, 0]}>

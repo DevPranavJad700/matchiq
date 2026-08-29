@@ -102,12 +102,14 @@ export interface Match {
 
 export interface MatchListItem {
   id: number;
+  season_id?: number | null;
   home_team: TeamSummary;
   away_team: TeamSummary;
   match_date: string;
   home_score: number | null;
   away_score: number | null;
   result: 'H' | 'D' | 'A' | null;
+  matchday?: number | null;
 }
 
 export interface PaginatedMatches {

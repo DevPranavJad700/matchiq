@@ -18,6 +18,7 @@ def list_matches(
     league_id: int | None = Query(None),
     season_id: int | None = Query(None),
     team_id: int | None = Query(None),
+    matchday: int | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -29,6 +30,7 @@ def list_matches(
         league_id=league_id,
         season_id=season_id,
         team_id=team_id,
+        matchday=matchday,
         limit=page_size,
         offset=offset,
     )
@@ -36,12 +38,14 @@ def list_matches(
     for m in matches:
         items.append(MatchListOut(
             id=m.id,
+            season_id=m.season_id,
             home_team=m.home_team,
             away_team=m.away_team,
             match_date=m.match_date,
             home_score=m.home_score,
             away_score=m.away_score,
             result=m.result,
+            matchday=m.matchday,
         ))
 
     return {

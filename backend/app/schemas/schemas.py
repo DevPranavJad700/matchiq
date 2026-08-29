@@ -130,12 +130,14 @@ class MatchOut(BaseModel):
 class MatchListOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    season_id: int | None = None
     home_team: TeamSummary
     away_team: TeamSummary
     match_date: datetime
     home_score: int | None
     away_score: int | None
     result: str | None
+    matchday: int | None = None
 
 
 # ─── Prediction Schemas ────────────────────────────────────────────────────────

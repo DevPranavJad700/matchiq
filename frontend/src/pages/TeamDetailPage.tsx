@@ -137,14 +137,14 @@ export function TeamDetailPage() {
       {goalTrend.length > 0 && (
         <div className="glass-card p-5">
           <SectionHeader title="Goals Trend" subtitle="Last 10 matches" />
-          <ResponsiveContainer width="100%" height={180}>
-            <LineChart data={goalTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-              <XAxis dataKey="match" tick={{ fill: '#9DA4AA', fontSize: 11 }} />
-              <YAxis tick={{ fill: '#9DA4AA', fontSize: 11 }} />
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={goalTrend} margin={{ top: 5, right: 20, left: 0, bottom: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+              <XAxis dataKey="match" stroke="#9DA4AA" tick={{ fill: '#F4F5F2', fontSize: 12, fontWeight: 500 }} />
+              <YAxis stroke="#9DA4AA" tick={{ fill: '#F4F5F2', fontSize: 12, fontWeight: 500 }} />
               <Tooltip
-                contentStyle={{ background: '#171B1F', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6 }}
-                labelStyle={{ color: '#9DA4AA' }}
+                contentStyle={{ background: '#171B1F', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, color: '#F4F5F2' }}
+                labelStyle={{ color: '#54C878', fontWeight: 600 }}
               />
               <Line type="monotone" dataKey="scored" stroke="#54C878" strokeWidth={2} dot={{ r: 3, fill: '#54C878' }} name="Goals Scored" />
               <Line type="monotone" dataKey="conceded" stroke="#EF4444" strokeWidth={2} dot={{ r: 3, fill: '#EF4444' }} name="Conceded" />

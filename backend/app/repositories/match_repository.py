@@ -17,13 +17,13 @@ class MatchRepository:
         league_id: int | None = None,
         season_id: int | None = None,
         team_id: int | None = None,
+        matchday: int | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[Match], int]:
         stmt = (
             select(Match)
             .options(joinedload(Match.home_team), joinedload(Match.away_team))
-            .order_by(Match.match_date.desc())
         )
         count_stmt = select(func.count()).select_from(Match)
 
@@ -37,6 +37,14 @@ class MatchRepository:
             cond = (Match.home_team_id == team_id) | (Match.away_team_id == team_id)
             stmt = stmt.where(cond)
             count_stmt = count_stmt.where(cond)
+        if matchday is not None:
+            stmt = stmt.where(Match.matchday == matchday)
+            count_stmt = count_stmt.where(Match.matchday == matchday)
+
+        if season_id is not None:
+            stmt = stmt.order_by(Match.matchday.asc().nulls_last(), Match.match_date.asc())
+        else:
+            stmt = stmt.order_by(Match.match_date.desc())
 
         total = self.db.execute(count_stmt).scalar_one()
         matches = list(self.db.execute(stmt.offset(offset).limit(limit)).unique().scalars().all())

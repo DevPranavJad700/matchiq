@@ -59,6 +59,7 @@ export const api = {
     league_id?: number;
     season_id?: number;
     team_id?: number;
+    matchday?: number;
     page?: number;
     page_size?: number;
   }) => {
@@ -66,6 +67,7 @@ export const api = {
     if (params?.league_id) query.set('league_id', String(params.league_id));
     if (params?.season_id) query.set('season_id', String(params.season_id));
     if (params?.team_id) query.set('team_id', String(params.team_id));
+    if (params?.matchday) query.set('matchday', String(params.matchday));
     if (params?.page) query.set('page', String(params.page));
     if (params?.page_size) query.set('page_size', String(params.page_size));
     return fetchJSON<PaginatedMatches>(`/matches?${query}`);

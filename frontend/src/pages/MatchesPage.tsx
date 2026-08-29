@@ -9,6 +9,7 @@ export function MatchesPage() {
   const [page, setPage] = useState(1);
   const [selectedTeamId, setSelectedTeamId] = useState<number | undefined>();
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | undefined>();
+  const [selectedMatchday, setSelectedMatchday] = useState<number | undefined>();
 
   const { data: leagues } = useQuery({ queryKey: ['leagues'], queryFn: api.getLeagues });
   const leagueId = leagues?.[0]?.id;
@@ -22,21 +23,25 @@ export function MatchesPage() {
   const { data: teams } = useQuery({ queryKey: ['teams'], queryFn: () => api.getTeams() });
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['matches', { page, team_id: selectedTeamId, season_id: selectedSeasonId }],
+    queryKey: ['matches', { page, team_id: selectedTeamId, season_id: selectedSeasonId, matchday: selectedMatchday }],
     queryFn: () =>
       api.getMatches({
         page,
         page_size: 20,
         team_id: selectedTeamId,
         season_id: selectedSeasonId,
+        matchday: selectedMatchday,
       }),
   });
 
   const totalPages = data ? Math.ceil(data.total / 20) : 1;
+  const currentSeason = seasons?.find((s) => s.id === selectedSeasonId);
+  const is2026_27 = currentSeason?.year === '2026-27';
 
   const handleResetFilters = () => {
     setSelectedTeamId(undefined);
     setSelectedSeasonId(undefined);
+    setSelectedMatchday(undefined);
     setPage(1);
   };
 
@@ -44,10 +49,17 @@ export function MatchesPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--border)] pb-4">
         <div>
-          <span className="text-[#54C878] text-xs font-bold uppercase tracking-wider">Historical Archives</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[#54C878] text-xs font-bold uppercase tracking-wider">Historical & Projected Archives</span>
+            {is2026_27 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#3B82F6]/15 text-[#3B82F6] border border-[#3B82F6]/30">
+                2026–27 AI Projected Season
+              </span>
+            )}
+          </div>
           <h1 className="text-3xl font-extrabold text-[#F4F5F2] tracking-tight mt-1">Match Fixtures & Results</h1>
           <p className="text-[#9DA4AA] text-sm mt-0.5">
-            {data?.total?.toLocaleString() ?? 0} authentic matches across 13 Premier League seasons
+            {data?.total?.toLocaleString() ?? 0} matches across 14 Premier League seasons (2013–14 to 2026–27)
           </p>
         </div>
 
@@ -68,7 +80,28 @@ export function MatchesPage() {
               <option value="" className="bg-[#171B1F] text-[#9DA4AA]">All Seasons</option>
               {seasons?.map((s) => (
                 <option key={s.id} value={s.id} className="bg-[#171B1F] text-[#F4F5F2]">
-                  {s.year} Season
+                  {s.year === '2026-27' ? `${s.year} (AI Predicted)` : `${s.year} Season`}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Matchweek Filter */}
+          <div className="flex items-center gap-1.5 bg-[#171B1F] py-1.5 px-3 rounded-lg border border-[var(--border)]">
+            <Calendar size={14} className="text-[#F59E0B]" />
+            <select
+              id="filter-matchweek"
+              value={selectedMatchday ?? ''}
+              onChange={(e) => {
+                setSelectedMatchday(e.target.value ? Number(e.target.value) : undefined);
+                setPage(1);
+              }}
+              className="bg-transparent text-xs font-semibold text-[#F4F5F2] focus:outline-none cursor-pointer"
+            >
+              <option value="" className="bg-[#171B1F] text-[#9DA4AA]">All Matchweeks</option>
+              {Array.from({ length: 38 }, (_, i) => i + 1).map((mw) => (
+                <option key={mw} value={mw} className="bg-[#171B1F] text-[#F4F5F2]">
+                  Matchweek {mw}
                 </option>
               ))}
             </select>
@@ -96,7 +129,7 @@ export function MatchesPage() {
           </div>
 
           {/* Reset Filters */}
-          {(selectedTeamId !== undefined || selectedSeasonId !== undefined) && (
+          {(selectedTeamId !== undefined || selectedSeasonId !== undefined || selectedMatchday !== undefined) && (
             <button
               onClick={handleResetFilters}
               className="flex items-center gap-1 text-xs text-[#9DA4AA] hover:text-[#F4F5F2] px-2 py-1.5 rounded hover:bg-[#171B1F] transition-colors"

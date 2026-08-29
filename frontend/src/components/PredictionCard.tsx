@@ -196,31 +196,59 @@ import type { MatchListItem } from '../types';
 export function MatchCard({ match }: { match: MatchListItem }) {
   const played = match.result !== null;
   const resultLabel = match.result === 'H' ? 'Home Win' : match.result === 'A' ? 'Away Win' : 'Draw';
+  const is2026_27 = match.season_id === 32 || (match.match_date && match.match_date.startsWith('2026')) || (match.match_date && match.match_date.startsWith('2027'));
 
   return (
     <Link
       to={`/matches/${match.id}`}
-      className="glass-card p-3.5 flex items-center gap-4 hover:bg-[#171B1F] transition-colors group"
+      className="glass-card p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#171B1F] border border-[var(--border)] transition-colors group"
     >
-      <div className="flex-1 flex items-center gap-2">
-        <span className="text-sm font-semibold text-[#F4F5F2] truncate">{match.home_team.name}</span>
-      </div>
-      <div className="flex flex-col items-center gap-0.5 shrink-0">
-        {played ? (
-          <span className="text-[#F4F5F2] font-bold text-base stat-number">
-            {match.home_score} – {match.away_score}
+      <div className="flex items-center gap-2 sm:w-28 shrink-0">
+        {match.matchday && (
+          <span className="px-2 py-0.5 rounded bg-[#171B1F] text-[11px] font-bold text-[#54C878] border border-[var(--border)]">
+            MW {match.matchday}
           </span>
-        ) : (
-          <span className="text-[#5C636A] text-xs font-bold uppercase tracking-wider">VS</span>
         )}
-        {played && (
-          <Badge variant={match.result === 'H' ? 'win' : match.result === 'A' ? 'loss' : 'draw'}>
-            {resultLabel}
-          </Badge>
+        {is2026_27 && (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#3B82F6]/15 text-[#3B82F6] border border-[#3B82F6]/30 hidden sm:inline">
+            AI Pred
+          </span>
         )}
       </div>
-      <div className="flex-1 flex items-center justify-end gap-2">
-        <span className="text-sm font-semibold text-[#F4F5F2] truncate text-right">{match.away_team.name}</span>
+
+      <div className="flex-1 flex items-center justify-between sm:justify-center gap-4">
+        <div className="flex-1 text-left sm:text-right">
+          <span className="text-sm font-bold text-[#F4F5F2] group-hover:text-[#54C878] transition-colors truncate">
+            {match.home_team.name}
+          </span>
+        </div>
+
+        <div className="flex flex-col items-center gap-0.5 shrink-0 px-2">
+          {played ? (
+            <span className="text-[#F4F5F2] font-extrabold text-base stat-number">
+              {match.home_score} – {match.away_score}
+            </span>
+          ) : (
+            <span className="text-[#5C636A] text-xs font-bold uppercase tracking-wider">VS</span>
+          )}
+          {played && (
+            <Badge variant={match.result === 'H' ? 'win' : match.result === 'A' ? 'loss' : 'draw'}>
+              {resultLabel}
+            </Badge>
+          )}
+        </div>
+
+        <div className="flex-1 text-right sm:text-left">
+          <span className="text-sm font-bold text-[#F4F5F2] group-hover:text-[#54C878] transition-colors truncate">
+            {match.away_team.name}
+          </span>
+        </div>
+      </div>
+
+      <div className="text-right sm:w-28 shrink-0">
+        <span className="text-[11px] text-[#9DA4AA] font-mono">
+          {match.match_date ? new Date(match.match_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+        </span>
       </div>
     </Link>
   );
