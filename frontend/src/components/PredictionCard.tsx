@@ -157,7 +157,7 @@ export function ShapExplanationChart({ factors }: ShapChartProps) {
               </span>
             </div>
             {factor.description && (
-              <p className="text-[11px] text-[#9DA4AA] truncate mb-1.5" title={factor.description}>
+              <p className="text-[11px] text-[#9DA4AA] leading-snug mb-1.5" title={factor.description}>
                 {factor.description}
               </p>
             )}

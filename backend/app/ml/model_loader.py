@@ -204,22 +204,35 @@ def explain_prediction(feature_vector: np.ndarray) -> list[dict]:
         return []
 
 
+def _ordinal(n: float | int) -> str:
+    """Format integers as ordinals: 1st, 2nd, 3rd, 4th..."""
+    try:
+        val = int(round(float(n)))
+        if 11 <= (val % 100) <= 13:
+            suffix = "th"
+        else:
+            suffix = {1: "st", 2: "nd", 3: "rd"}.get(val % 10, "th")
+        return f"{val}{suffix}"
+    except Exception:
+        return f"{n}"
+
+
 def _feature_to_description(feature: str, value: float, impact: float) -> str:
     """Convert a feature name + value into a human-readable description."""
-    direction = "positive" if impact >= 0 else "negative"
-    magnitude = "strongly" if abs(impact) > 0.10 else ("moderately" if abs(impact) > 0.03 else "slightly")
+    direction = "boost" if impact >= 0 else "drag"
+    magnitude = "Strong" if abs(impact) > 0.08 else ("Moderate" if abs(impact) > 0.025 else "Slight")
 
     label_map = {
-        "home_form_pts_last5": f"Home team earned {value:.0f} pts from last 5 matches",
-        "away_form_pts_last5": f"Away team earned {value:.0f} pts from last 5 matches",
+        "home_form_pts_last5": f"Home team earned {value:.0f} pts in last 5 matches",
+        "away_form_pts_last5": f"Away team earned {value:.0f} pts in last 5 matches",
         "home_form_wins_last5": f"Home team won {value:.0f} of last 5 matches",
         "away_form_wins_last5": f"Away team won {value:.0f} of last 5 matches",
         "home_form_draws_last5": f"Home team drew {value:.0f} of last 5 matches",
         "away_form_draws_last5": f"Away team drew {value:.0f} of last 5 matches",
         "home_form_losses_last5": f"Home team lost {value:.0f} of last 5 matches",
         "away_form_losses_last5": f"Away team lost {value:.0f} of last 5 matches",
-        "home_form_gd_last5": f"Home team goal diff in last 5 matches: {value:+.0f}",
-        "away_form_gd_last5": f"Away team goal diff in last 5 matches: {value:+.0f}",
+        "home_form_gd_last5": f"Home team goal difference in last 5 matches: {value:+.0f}",
+        "away_form_gd_last5": f"Away team goal difference in last 5 matches: {value:+.0f}",
         "home_avg_goals_scored": f"Home team scores {value:.2f} goals/match on avg",
         "away_avg_goals_scored": f"Away team scores {value:.2f} goals/match on avg",
         "home_avg_goals_conceded": f"Home team concedes {value:.2f} goals/match on avg",
@@ -230,15 +243,15 @@ def _feature_to_description(feature: str, value: float, impact: float) -> str:
         "away_avg_shots_on_target": f"Away team averages {value:.1f} shots on target",
         "home_avg_xg": f"Home team estimated xG: {value:.2f}",
         "away_avg_xg": f"Away team estimated xG: {value:.2f}",
-        "home_league_position": f"Home team is {value:.0f}th in current standings",
-        "away_league_position": f"Away team is {value:.0f}th in current standings",
-        "home_points": f"Home team accumulated {value:.0f} pts this season",
-        "away_points": f"Away team accumulated {value:.0f} pts this season",
-        "points_diff": f"Pre-match points difference: {value:+.0f} pts",
-        "position_diff": f"Pre-match league position diff: {value:+.0f}",
+        "home_league_position": f"Home team is {_ordinal(value)} in current standings",
+        "away_league_position": f"Away team is {_ordinal(value)} in current standings",
+        "home_points": f"Home team has accumulated {value:.0f} pts this campaign",
+        "away_points": f"Away team has accumulated {value:.0f} pts this campaign",
+        "points_diff": f"Pre-match points differential: {value:+.0f} pts",
+        "position_diff": f"Pre-match league position diff: {value:+.0f} places",
         "form_diff": f"Recent 5-match form advantage: {value:+.2f} pts",
-        "attack_diff": f"Attack strength difference: {value:+.2f} goals",
-        "defence_diff": f"Defence strength difference: {value:+.2f} goals",
+        "attack_diff": f"Attack strength differential: {value:+.2f} goals",
+        "defence_diff": f"Defence strength differential: {value:+.2f} goals conceded",
         "xg_diff": f"Expected goals (xG) differential: {value:+.2f}",
         "h2h_home_wins": f"Home team won {value:.0f} recent head-to-head matches",
         "h2h_away_wins": f"Away team won {value:.0f} recent head-to-head matches",
@@ -249,11 +262,11 @@ def _feature_to_description(feature: str, value: float, impact: float) -> str:
         "away_away_goals_avg": f"Away team scores {value:.2f} goals/match away",
         "home_elo": f"Home team Elo power rating: {value:.0f}",
         "away_elo": f"Away team Elo power rating: {value:.0f}",
-        "elo_diff": f"Home Elo advantage of {value:+.1f} pts (inc. home field)",
+        "elo_diff": f"Home Elo advantage of {value:+.0f} pts (inc. home ground)",
         "home_rest_days": f"Home squad has {value:.0f} days of recovery",
         "away_rest_days": f"Away squad has {value:.0f} days of recovery",
         "rest_diff": f"Schedule recovery advantage: {value:+.0f} days",
     }
 
     base = label_map.get(feature, f"{feature.replace('_', ' ').title()}: {value:.3f}")
-    return f"{base} ({magnitude} {direction} impact)"
+    return f"{base} ({magnitude} {direction})"
