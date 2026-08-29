@@ -6,7 +6,7 @@ import api from '../services/api';
 import { PageLoader, ErrorBanner, EmptyState } from '../components/ui';
 
 export function AnalyticsPage() {
-  const [selectedSeason, setSelectedSeason] = useState<string>('2025-26');
+  const [selectedSeason, setSelectedSeason] = useState<string>('2026-27');
   const { data: leagues } = useQuery({ queryKey: ['leagues'], queryFn: api.getLeagues });
   const leagueId = leagues?.[0]?.id;
 
@@ -24,11 +24,12 @@ export function AnalyticsPage() {
   const seasonsList = available_seasons && available_seasons.length > 0
     ? available_seasons
     : [
-        '2025-26', '2024-25', '2023-24', '2022-23', '2021-22',
+        '2026-27', '2025-26', '2024-25', '2023-24', '2022-23', '2021-22',
         '2020-21', '2019-20', '2018-19', '2017-18',
         '2016-17', '2015-16', '2014-15', '2013-14',
       ];
 
+  const isPredictedSeason = (analytics.season || selectedSeason) === '2026-27';
   const champion = table[0];
   const topAttack = top_scorers_teams[0];
   const topDefence = best_defences_teams[0];
@@ -38,12 +39,19 @@ export function AnalyticsPage() {
       {/* Page Header with Season Selector */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <span className="text-[#54C878] text-xs font-bold uppercase tracking-wider">Historical Football Intelligence</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[#54C878] text-xs font-bold uppercase tracking-wider">Historical & Predictive Football Intelligence</span>
+            {isPredictedSeason && (
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#54C878]/15 text-[#54C878] border border-[#54C878]/30">
+                AI Predicted Season
+              </span>
+            )}
+          </div>
           <h1 className="text-3xl font-extrabold text-[#F4F5F2] tracking-tight mt-1">
             Premier League Standings & Trends
           </h1>
           <p className="text-[#9DA4AA] mt-1 text-sm font-medium">
-            {analytics.league.name} · Complete Official Standings ({seasonsList[seasonsList.length - 1]} to {seasonsList[0]})
+            {analytics.league.name} · Complete Standings ({seasonsList[seasonsList.length - 1]} to {seasonsList[0]})
           </p>
         </div>
 
@@ -59,7 +67,7 @@ export function AnalyticsPage() {
           >
             {seasonsList.map((s) => (
               <option key={s} value={s} className="bg-[#171B1F] text-[#F4F5F2]">
-                {s} Season
+                {s === '2026-27' ? `${s} (AI Predicted)` : `${s} Season`}
               </option>
             ))}
           </select>
@@ -74,7 +82,9 @@ export function AnalyticsPage() {
               <Trophy size={20} />
             </div>
             <div>
-              <p className="text-[11px] font-bold text-[#9DA4AA] uppercase tracking-wider">Season Champions ({analytics.season})</p>
+              <p className="text-[11px] font-bold text-[#9DA4AA] uppercase tracking-wider">
+                {isPredictedSeason ? 'Projected Champions (2026-27)' : `Season Champions (${analytics.season})`}
+              </p>
               <p className="text-base font-extrabold text-[#F4F5F2] truncate">{champion.team.name}</p>
               <p className="text-xs text-[#54C878] font-semibold">{champion.points} pts · {champion.won} wins · GD {champion.goal_difference > 0 ? `+${champion.goal_difference}` : champion.goal_difference}</p>
             </div>
@@ -167,8 +177,14 @@ export function AnalyticsPage() {
       <div className="glass-card p-5 border border-[var(--border)]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
-            <h2 className="text-[#F4F5F2] font-bold text-lg">Official League Standings</h2>
-            <p className="text-xs text-[#9DA4AA] mt-0.5">Authentic match outcomes and points from the {analytics.season} campaign</p>
+            <h2 className="text-[#F4F5F2] font-bold text-lg">
+              {isPredictedSeason ? 'AI Projected League Standings (380 Matches)' : 'Official League Standings'}
+            </h2>
+            <p className="text-xs text-[#9DA4AA] mt-0.5">
+              {isPredictedSeason
+                ? 'Simulated final table based on 10,000 Monte Carlo runs and 45-feature ML Random Forest probabilities'
+                : `Authentic match outcomes and points from the ${analytics.season} campaign`}
+            </p>
           </div>
           <div className="flex items-center gap-3 text-xs">
             <span className="flex items-center gap-1.5 text-[#3B82F6]">
