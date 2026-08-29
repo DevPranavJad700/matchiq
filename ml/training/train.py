@@ -522,7 +522,7 @@ def train() -> None:
     baseline_metrics = evaluate_baseline(y_test, dataset_name="Test")
 
     # 8. Retrain winner on ALL 13 Seasons (2013-2026) for live production deployment
-    logger.info(f"\n--- Refitting Final Production Model on ALL 13 Seasons (4,940 matches: 2013–2026) ---")
+    logger.info("\n--- Refitting Final Production Model on ALL 13 Seasons (4,940 matches: 2013–2026) ---")
     X_all = features_df[FEATURE_NAMES].values
     y_all = features_df["target"].values.astype(int)
     production_model = build_models()[best_name]

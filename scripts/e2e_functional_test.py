@@ -10,8 +10,6 @@ Executes real empirical tests covering:
 7. 20-request performance latency benchmarking (singleton verification)
 """
 
-import json
-import logging
 import os
 import sys
 from pathlib import Path
@@ -46,7 +44,7 @@ def test_database():
         db.add(league); db.flush()
         season = Season(league_id=league.id, year="2023-24")
         db.add(season); db.flush()
-        
+
         teams = []
         team_names = ["Arsenal FC", "Aston Villa", "AFC Bournemouth", "Brentford FC", "Brighton & Hove Albion", "Chelsea FC", "Coventry City", "Crystal Palace", "Everton FC", "Fulham FC", "Hull City", "Ipswich Town", "Leeds United", "Liverpool FC", "Manchester City", "Manchester United", "Newcastle United", "Nottingham Forest", "Sunderland AFC", "Tottenham Hotspur"]
         for tname in team_names:
@@ -257,7 +255,7 @@ def test_performance():
     min_latency = min(times)
     max_latency = max(times)
 
-    print(f"  Executed 20 consecutive inference calls:")
+    print("  Executed 20 consecutive inference calls:")
     print(f"    Min Latency: {min_latency:.2f} ms")
     print(f"    Max Latency: {max_latency:.2f} ms")
     print(f"    Avg Latency: {avg_latency:.2f} ms")

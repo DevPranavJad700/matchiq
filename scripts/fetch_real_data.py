@@ -22,13 +22,11 @@ import hashlib
 import io
 import json
 import logging
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 import urllib.request
 
-import numpy as np
 import pandas as pd
 
 project_root = Path(__file__).parent.parent
@@ -300,9 +298,8 @@ def seed_real_data_to_db(df: pd.DataFrame) -> None:
     try:
         from app.db.session import SessionLocal, engine
         from app.models.orm_models import (
-            Base, League, Season, Team, Match, TeamMatchStatistic, Standing, ModelVersion, Prediction
+            Base, League, Season, Team, Match, TeamMatchStatistic, Standing, Prediction
         )
-        from sqlalchemy import select
 
         Base.metadata.create_all(engine)
         db = SessionLocal()

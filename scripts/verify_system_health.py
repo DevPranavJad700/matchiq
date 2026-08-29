@@ -8,7 +8,6 @@ import logging
 import sys
 from pathlib import Path
 import joblib
-import numpy as np
 import pandas as pd
 from sqlalchemy import func, select
 
@@ -19,18 +18,16 @@ sys.path.insert(0, str(project_root))
 from app.db.session import SessionLocal
 from app.ml.model_loader import is_model_loaded, load_model
 from app.models.orm_models import (
-    League,
     Match,
     ModelVersion,
-    Prediction,
     Season,
     Standing,
     Team,
     TeamMatchStatistic,
 )
-from app.services.feature_builder import FEATURE_NAMES, FeatureBuilderService
+from app.services.feature_builder import FEATURE_NAMES
 from app.services.prediction_service import PredictionService
-from ml.features.feature_engineering import FEATURE_NAMES as ML_FEATURE_NAMES, compute_features
+from ml.features.feature_engineering import FEATURE_NAMES as ML_FEATURE_NAMES
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 logger = logging.getLogger("system_verify")
@@ -54,7 +51,7 @@ def verify_all():
     csv_sha = hashlib.sha256(csv_path.read_bytes()).hexdigest()
     assert csv_sha == prov["sha256"], f"Checksum mismatch: {csv_sha} != {prov['sha256']}"
 
-    print(f"\n[1] REAL DATASET INTEGRITY:")
+    print("\n[1] REAL DATASET INTEGRITY:")
     print(f"    Total Matches:        {len(df):,} matches")
     print(f"    Total Seasons:        {len(prov['seasons'])} ({prov['seasons'][0]} to {prov['seasons'][-1]})")
     print(f"    Total Teams:          {len(prov['teams'])} unique Premier League clubs")
@@ -76,7 +73,7 @@ def verify_all():
     with open(metrics_path) as f:
         metrics = json.load(f)
 
-    print(f"\n[2] TRAINED MODEL & ARTIFACTS:")
+    print("\n[2] TRAINED MODEL & ARTIFACTS:")
     print(f"    Model Architecture:   {type(model).__name__}")
     print(f"    Selected Algorithm:   {manifest.get('algorithm', 'N/A')}")
     print(f"    Features in Model:    {len(manifest.get('features', []))} features")
@@ -88,15 +85,15 @@ def verify_all():
 
     # 3. Feature Parity Check (Batch vs Online Serving)
     assert FEATURE_NAMES == ML_FEATURE_NAMES, "Feature names do not match between batch and online serving!"
-    print(f"\n[3] FEATURE SERVING PARITY:")
+    print("\n[3] FEATURE SERVING PARITY:")
     print(f"    Batch Features:       {len(ML_FEATURE_NAMES)} features")
     print(f"    Online Features:      {len(FEATURE_NAMES)} features")
-    print(f"    Dynamic Elo System:   Present (home_elo, away_elo, elo_diff)")
-    print(f"    Rest Days System:     Present (home_rest_days, away_rest_days, rest_diff)")
-    print(f"    Feature Order Parity: EXACT MATCH")
+    print("    Dynamic Elo System:   Present (home_elo, away_elo, elo_diff)")
+    print("    Rest Days System:     Present (home_rest_days, away_rest_days, rest_diff)")
+    print("    Feature Order Parity: EXACT MATCH")
 
     # 4. Database Population Check
-    print(f"\n[4] DATABASE POPULATION & SCHEMA INTEGRITY:")
+    print("\n[4] DATABASE POPULATION & SCHEMA INTEGRITY:")
     db = SessionLocal()
     try:
         team_count = db.execute(select(func.count(Team.id))).scalar_one()
@@ -119,7 +116,7 @@ def verify_all():
         assert active_model is not None, "Active model version record not found in database!"
 
         # 5. Live Prediction Service & SHAP Explanations
-        print(f"\n[5] LIVE INFERENCE & SHAP EXPLAINABILITY TEST:")
+        print("\n[5] LIVE INFERENCE & SHAP EXPLAINABILITY TEST:")
         if not is_model_loaded():
             load_model()
         pred_service = PredictionService(db)

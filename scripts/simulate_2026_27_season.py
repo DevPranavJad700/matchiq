@@ -113,7 +113,7 @@ def main() -> None:
     except PermissionError:
         alt_path = Path("reports/premier_league_2026_27_predictions_sim.csv").resolve()
         matches_df.to_csv(alt_path, index=False)
-        print(f"File locked, saved predictions to alternate file:")
+        print("File locked, saved predictions to alternate file:")
         print(f"   {alt_path}")
 
     # 4. Monte Carlo Season Table Simulation (10,000 runs)
@@ -172,12 +172,12 @@ def main() -> None:
     for t in team_names:
         w = int(round(np.mean(sim_w[t])))
         d = int(round(np.mean(sim_d[t])))
-        l = 38 - w - d
+        losses = 38 - w - d
         gf = int(round(np.mean(sim_gf[t])))
         ga = int(round(np.mean(sim_ga[t])))
         gd = gf - ga
         pts = w * 3 + d
-        form_p = [w / 38, d / 38, l / 38]
+        form_p = [w / 38, d / 38, losses / 38]
         last5 = "".join(np.random.choice(["W", "D", "L"], size=5, p=form_p))
 
         final_rows.append({
@@ -185,7 +185,7 @@ def main() -> None:
             "MP": 38,
             "W": w,
             "D": d,
-            "L": l,
+            "L": losses,
             "GF": gf,
             "GA": ga,
             "GD": gd,
@@ -200,12 +200,12 @@ def main() -> None:
     standings_csv = Path("reports/premier_league_2026_27_predicted_standings.csv").resolve()
     try:
         standings_df.to_csv(standings_csv)
-        print(f"Successfully generated and saved Standings Table to:")
+        print("Successfully generated and saved Standings Table to:")
         print(f"   {standings_csv}\n")
     except PermissionError:
         alt_path = Path("reports/premier_league_2026_27_predicted_standings_sim.csv").resolve()
         standings_df.to_csv(alt_path)
-        print(f"File locked, saved Standings Table to:")
+        print("File locked, saved Standings Table to:")
         print(f"   {alt_path}\n")
 
     print(standings_df.to_string())

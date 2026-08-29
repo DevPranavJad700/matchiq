@@ -16,14 +16,12 @@ Options:
 
 import argparse
 import logging
-import os
 import random
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 
 # Add paths
 project_root = Path(__file__).parent.parent

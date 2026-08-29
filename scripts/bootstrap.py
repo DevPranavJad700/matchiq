@@ -84,7 +84,7 @@ def bootstrap() -> None:
 
         db = SessionLocal()
         active_model = db.execute(select(ModelVersion).where(ModelVersion.is_active == True)).scalar_one_or_none()
-        
+
         if not active_model:
             logger.info("No active model registered in DB. Registering trained model...")
             meta_path = project_root / "ml" / "models" / "feature_metadata.json"
