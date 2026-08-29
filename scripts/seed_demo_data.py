@@ -1,12 +1,11 @@
-"""Demo data seeder for MatchIQ.
+"""Demo data seeder for MatchIQ [SIMULATED DEMO DATA].
 
-Generates a realistic synthetic Premier League-like dataset covering
-3 seasons (2021-22, 2022-23, 2023-24) with 20 teams, realistic
-match statistics, and standings.
+Generates a synthetic Premier League simulation dataset covering 3 seasons
+with 20 teams, valid round-robin matchday scheduling (10 matches per matchday,
+1 match per team per matchday), and realistic simulated statistics.
 
-This data is clearly labeled as SAMPLE/DEMO data and is NOT real
-football results. It provides enough data (~1140 matches per season)
-to demonstrate the full MatchIQ system including ML training.
+NOTICE: This generator produces SIMULATED / SYNTHETIC data for demo purposes.
+For authentic Premier League data, run: python scripts/fetch_real_data.py
 
 Usage:
     python scripts/seed_demo_data.py [--reset]
@@ -38,12 +37,10 @@ logger = logging.getLogger(__name__)
 random.seed(42)
 np.random.seed(42)
 
-LEAGUE_NAME = "Premier League (Demo)"
+LEAGUE_NAME = "Premier League (Simulated Demo)"
 COUNTRY = "England"
 SEASONS = ["2021-22", "2022-23", "2023-24"]
 
-# 20 Premier League-style teams with realistic strength ratings (0-1)
-# Higher strength → higher attack, lower goals conceded
 TEAMS = [
     {"name": "Arsenal FC", "short_name": "ARS", "strength": 0.86},
     {"name": "Aston Villa", "short_name": "AVL", "strength": 0.73},
@@ -51,30 +48,25 @@ TEAMS = [
     {"name": "Brentford FC", "short_name": "BRE", "strength": 0.65},
     {"name": "Brighton & Hove Albion", "short_name": "BHA", "strength": 0.70},
     {"name": "Chelsea FC", "short_name": "CHE", "strength": 0.81},
-    {"name": "Coventry City", "short_name": "COV", "strength": 0.50},
     {"name": "Crystal Palace", "short_name": "CRY", "strength": 0.58},
     {"name": "Everton FC", "short_name": "EVE", "strength": 0.57},
     {"name": "Fulham FC", "short_name": "FUL", "strength": 0.62},
-    {"name": "Hull City", "short_name": "HUL", "strength": 0.54},
-    {"name": "Ipswich Town", "short_name": "IPS", "strength": 0.52},
     {"name": "Leeds United", "short_name": "LEE", "strength": 0.55},
+    {"name": "Leicester City", "short_name": "LEI", "strength": 0.60},
     {"name": "Liverpool FC", "short_name": "LIV", "strength": 0.88},
+    {"name": "Luton Town", "short_name": "LUT", "strength": 0.45},
     {"name": "Manchester City", "short_name": "MCI", "strength": 0.92},
     {"name": "Manchester United", "short_name": "MUN", "strength": 0.78},
     {"name": "Newcastle United", "short_name": "NEW", "strength": 0.76},
     {"name": "Nottingham Forest", "short_name": "NFO", "strength": 0.56},
-    {"name": "Sunderland AFC", "short_name": "SUN", "strength": 0.53},
+    {"name": "Southampton FC", "short_name": "SOU", "strength": 0.50},
     {"name": "Tottenham Hotspur", "short_name": "TOT", "strength": 0.75},
+    {"name": "Wolves", "short_name": "WOL", "strength": 0.57},
 ]
 
 
-def simulate_match(
-    home_strength: float, away_strength: float
-) -> dict:
-    """Simulate a match result using Poisson distribution based on team strengths.
-
-    Home advantage is modeled as a 0.25 boost to home expected goals.
-    """
+def simulate_match(home_strength: float, away_strength: float) -> dict:
+    """Simulate a match result using Poisson distribution based on team strengths."""
     HOME_ADVANTAGE = 0.25
 
     home_xg = max(0.5, home_strength * 2.5 + HOME_ADVANTAGE - away_strength * 1.2)
@@ -90,7 +82,6 @@ def simulate_match(
     else:
         result = "D"
 
-    # Derive correlated stats from goals and strength
     home_shots = max(3, int(np.random.normal(home_xg * 6, 3)))
     away_shots = max(2, int(np.random.normal(away_xg * 6, 3)))
 
@@ -125,133 +116,174 @@ def simulate_match(
     }
 
 
-def generate_season_schedule(
-    teams: list[dict], season_start: datetime
-) -> list[dict]:
-    """Generate a full round-robin schedule for a season."""
+def generate_valid_round_robin_schedule(teams: list[dict], season_start: datetime) -> list[dict]:
+    """Generate a realistic round-robin schedule using circle method.
+
+    Guarantees:
+    - Exactly 38 matchdays.
+    - Exactly 10 matches per matchday.
+    - Each team plays exactly ONE match per matchday.
+    - No multi-match same-day collisions for any team.
+    """
     n = len(teams)
+    team_indices = list(range(n))
+    first_half_rounds = []
+
+    # Circle algorithm for round robin
+    indices = team_indices[:]
+    for round_num in range(n - 1):
+        round_matches = []
+        for i in range(n // 2):
+            t1 = indices[i]
+            t2 = indices[n - 1 - i]
+            # Alternate home/away based on round
+            if round_num % 2 == 0:
+                round_matches.append((t1, t2))
+            else:
+                round_matches.append((t2, t1))
+        first_half_rounds.append(round_matches)
+        # Rotate all but the first element
+        indices = [indices[0]] + [indices[-1]] + indices[1:-1]
+
+    # Second half: reverse home and away
+    second_half_rounds = []
+    for r in first_half_rounds:
+        second_half_rounds.append([(t2, t1) for (t1, t2) in r])
+
+    all_rounds = first_half_rounds + second_half_rounds
+
     matches = []
-    matchday = 0
+    for gw, round_matches in enumerate(all_rounds, start=1):
+        # Matchday date: 7 days apart, kickoff slots around Saturday/Sunday
+        gw_base_date = season_start + timedelta(days=(gw - 1) * 7)
+        for match_in_gw, (ht_idx, at_idx) in enumerate(round_matches):
+            # Realistic slot: Sat 12:30 (0), Sat 15:00 (1..6), Sat 17:30 (7), Sun 14:00 (8), Sun 16:30 (9)
+            if match_in_gw == 0:
+                match_dt = gw_base_date.replace(hour=12, minute=30)
+            elif match_in_gw < 7:
+                match_dt = gw_base_date.replace(hour=15, minute=0)
+            elif match_in_gw == 7:
+                match_dt = gw_base_date.replace(hour=17, minute=30)
+            elif match_in_gw == 8:
+                match_dt = (gw_base_date + timedelta(days=1)).replace(hour=14, minute=0)
+            else:
+                match_dt = (gw_base_date + timedelta(days=1)).replace(hour=16, minute=30)
 
-    for i in range(n):
-        for j in range(n):
-            if i != j:
-                matchday += 1
-                # Spread matches across ~38 gameweeks
-                gw = ((matchday - 1) // (n // 2)) + 1
-                days_offset = (gw - 1) * 7 + random.randint(0, 5)
-                match_date = season_start + timedelta(days=days_offset)
-
-                matches.append({
-                    "home_team_idx": i,
-                    "away_team_idx": j,
-                    "match_date": match_date,
-                    "matchday": gw,
-                })
+            matches.append({
+                "home_team_idx": ht_idx,
+                "away_team_idx": at_idx,
+                "match_date": match_dt,
+                "matchday": gw,
+            })
 
     return matches
 
 
 def seed_to_db(reset: bool = False) -> None:
-    """Seed demo data directly into the PostgreSQL database."""
+    """Populate database with simulated demo data."""
+    from app.db.base import Base
     from app.db.session import SessionLocal, engine
     from app.models.orm_models import (
-        Base,
-        League,
-        Match,
-        ModelVersion,
-        Season,
-        Standing,
-        Team,
-        TeamMatchStatistic,
+        League, Match, Season, Standing, Team, TeamMatchStatistic, Prediction
     )
-    from sqlalchemy import select, text
+    from sqlalchemy import select
 
-    db = SessionLocal()
+    logger.warning("=" * 60)
+    logger.warning("[NOTICE] SEEDING SYNTHETIC DEMO DATA")
+    logger.warning("This generator creates simulated data for offline/test environments.")
+    logger.warning("=" * 60)
 
     if reset:
-        logger.info("Dropping all tables and recreating...")
-        Base.metadata.drop_all(engine)
-
-    Base.metadata.create_all(engine)
-    logger.info("Tables created/verified")
-
-    # Check if already seeded
-    existing = db.execute(select(League)).scalar_one_or_none()
-    if existing and not reset:
-        logger.info("Data already exists. Use --reset to re-seed.")
+        logger.info("Dropping all existing database tables...")
+        db = SessionLocal()
+        db.query(Prediction).delete()
+        db.query(TeamMatchStatistic).delete()
+        db.query(Standing).delete()
+        db.query(Match).delete()
+        db.query(Team).delete()
+        db.query(Season).delete()
+        db.query(League).delete()
+        db.commit()
         db.close()
-        return
 
-    # ── League ────────────────────────────────────────────
-    league = League(name=LEAGUE_NAME, short_name="PL-DEMO", country=COUNTRY)
-    db.add(league)
-    db.flush()
-    logger.info(f"Created league: {league.name} (id={league.id})")
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
 
-    # ── Teams ─────────────────────────────────────────────
+    # 1. League
+    league = db.execute(select(League).where(League.name == LEAGUE_NAME)).scalar_one_or_none()
+    if not league:
+        league = League(name=LEAGUE_NAME, short_name="PL-DEMO", country=COUNTRY)
+        db.add(league)
+        db.flush()
+
+    # 2. Teams
     team_objs = []
-    for t in TEAMS:
-        team = Team(name=t["name"], short_name=t["short_name"], country=COUNTRY, league_id=league.id)
-        db.add(team)
-        team_objs.append(team)
-    db.flush()
-    logger.info(f"Created {len(team_objs)} teams")
+    for t_data in TEAMS:
+        t = db.execute(select(Team).where(Team.name == t_data["name"])).scalar_one_or_none()
+        if not t:
+            t = Team(
+                name=t_data["name"],
+                short_name=t_data["short_name"],
+                country=COUNTRY,
+                league_id=league.id,
+            )
+            db.add(t)
+            db.flush()
+        team_objs.append(t)
 
-    # Build CSV records for ML training (saved alongside DB seeding)
-    csv_rows = []
-
-    # ── Seasons ────────────────────────────────────────────
+    # 3. Seasons & Matches
     season_starts = {
         "2021-22": datetime(2021, 8, 14, tzinfo=timezone.utc),
         "2022-23": datetime(2022, 8, 6, tzinfo=timezone.utc),
         "2023-24": datetime(2023, 8, 12, tzinfo=timezone.utc),
     }
 
-    for season_year in SEASONS:
-        season_start = season_starts[season_year]
-        season = Season(league_id=league.id, year=season_year)
-        db.add(season)
-        db.flush()
+    all_match_rows = []
+    total_matches_seeded = 0
 
-        logger.info(f"Seeding season {season_year}...")
+    for season_name in SEASONS:
+        season = db.execute(
+            select(Season).where(Season.league_id == league.id, Season.year == season_name)
+        ).scalar_one_or_none()
+        if not season:
+            season = Season(league_id=league.id, year=season_name)
+            db.add(season)
+            db.flush()
 
-        # Generate schedule
-        schedule = generate_season_schedule(TEAMS, season_start)
+        logger.info(f"Generating valid round-robin schedule for season {season_name}...")
+        schedule = generate_valid_round_robin_schedule(TEAMS, season_starts[season_name])
 
-        # Track standings
-        standings_tracker = {
+        table_tracker = {
             t.id: {
-                "position": 0, "played": 0, "won": 0, "drawn": 0, "lost": 0,
-                "goals_for": 0, "goals_against": 0, "goal_difference": 0, "points": 0
+                "played": 0, "won": 0, "drawn": 0, "lost": 0,
+                "goals_for": 0, "goals_against": 0, "points": 0,
             }
             for t in team_objs
         }
 
-        # Create matches
-        for sched in schedule:
-            ht_idx = sched["home_team_idx"]
-            at_idx = sched["away_team_idx"]
-            ht = team_objs[ht_idx]
-            at = team_objs[at_idx]
+        for m_info in schedule:
+            ht = team_objs[m_info["home_team_idx"]]
+            at = team_objs[m_info["away_team_idx"]]
+            ht_strength = TEAMS[m_info["home_team_idx"]]["strength"]
+            at_strength = TEAMS[m_info["away_team_idx"]]["strength"]
 
-            sim = simulate_match(TEAMS[ht_idx]["strength"], TEAMS[at_idx]["strength"])
+            sim = simulate_match(ht_strength, at_strength)
 
             match = Match(
                 season_id=season.id,
                 league_id=league.id,
                 home_team_id=ht.id,
                 away_team_id=at.id,
-                match_date=sched["match_date"],
+                match_date=m_info["match_date"],
                 home_score=sim["home_goals"],
                 away_score=sim["away_goals"],
                 result=sim["result"],
-                matchday=sched["matchday"],
+                matchday=m_info["matchday"],
             )
             db.add(match)
             db.flush()
 
-            # Stats — home
+            # Stats
             db.add(TeamMatchStatistic(
                 match_id=match.id, team_id=ht.id, is_home=True,
                 goals=sim["home_goals"], goals_conceded=sim["away_goals"],
@@ -260,7 +292,6 @@ def seed_to_db(reset: bool = False) -> None:
                 corners=sim["home_corners"], fouls=sim["home_fouls"],
                 yellow_cards=sim["home_yellows"], red_cards=sim["home_reds"],
             ))
-            # Stats — away
             db.add(TeamMatchStatistic(
                 match_id=match.id, team_id=at.id, is_home=False,
                 goals=sim["away_goals"], goals_conceded=sim["home_goals"],
@@ -270,78 +301,49 @@ def seed_to_db(reset: bool = False) -> None:
                 yellow_cards=sim["away_yellows"], red_cards=sim["away_reds"],
             ))
 
-            # Update standing tracker
-            for team_id, is_home, gf, ga, result_code in [
-                (ht.id, True, sim["home_goals"], sim["away_goals"], sim["result"]),
-                (at.id, False, sim["away_goals"], sim["home_goals"], sim["result"]),
-            ]:
-                st = standings_tracker[team_id]
-                st["played"] += 1
-                st["goals_for"] += gf
-                st["goals_against"] += ga
-                st["goal_difference"] = st["goals_for"] - st["goals_against"]
-                if (is_home and result_code == "H") or (not is_home and result_code == "A"):
-                    st["won"] += 1
-                    st["points"] += 3
-                elif result_code == "D":
-                    st["drawn"] += 1
-                    st["points"] += 1
-                else:
-                    st["lost"] += 1
+            # Update standings
+            hg, ag, res = sim["home_goals"], sim["away_goals"], sim["result"]
+            st_h, st_a = table_tracker[ht.id], table_tracker[at.id]
+            st_h["played"] += 1; st_h["goals_for"] += hg; st_h["goals_against"] += ag
+            st_a["played"] += 1; st_a["goals_for"] += ag; st_a["goals_against"] += hg
 
-            # CSV row
-            csv_rows.append({
-                "match_id": match.id,
-                "match_date": match.match_date.isoformat(),
-                "season": season_year,
-                "home_team_id": ht.id,
-                "away_team_id": at.id,
-                "result": sim["result"],
-                "home_goals": sim["home_goals"],
-                "away_goals": sim["away_goals"],
-                "home_shots": sim["home_shots"],
-                "away_shots": sim["away_shots"],
-                "home_sot": sim["home_sot"],
-                "away_sot": sim["away_sot"],
-                "home_xg": sim["home_xg"],
-                "away_xg": sim["away_xg"],
-            })
+            if res == "H":
+                st_h["won"] += 1; st_h["points"] += 3; st_a["lost"] += 1
+            elif res == "A":
+                st_a["won"] += 1; st_a["points"] += 3; st_h["lost"] += 1
+            else:
+                st_h["drawn"] += 1; st_h["points"] += 1; st_a["drawn"] += 1; st_a["points"] += 1
 
-        db.flush()
+            total_matches_seeded += 1
 
-        # Compute and store final standings
-        sorted_teams = sorted(
-            standings_tracker.items(),
-            key=lambda x: (-x[1]["points"], -x[1]["goal_difference"], -x[1]["goals_for"])
+        # Commit final standings
+        sorted_standings = sorted(
+            table_tracker.items(),
+            key=lambda x: (-x[1]["points"], -(x[1]["goals_for"] - x[1]["goals_against"]), -x[1]["goals_for"])
         )
-        for position, (team_id, stats) in enumerate(sorted_teams, start=1):
-            stats["position"] = position
+        for pos, (tid, stats) in enumerate(sorted_standings, start=1):
             db.add(Standing(
                 season_id=season.id,
-                team_id=team_id,
-                **stats,
+                team_id=tid,
+                position=pos,
+                played=stats["played"],
+                won=stats["won"],
+                drawn=stats["drawn"],
+                lost=stats["lost"],
+                goals_for=stats["goals_for"],
+                goals_against=stats["goals_against"],
+                goal_difference=stats["goals_for"] - stats["goals_against"],
+                points=stats["points"],
             ))
 
-        db.flush()
-        logger.info(f"  Season {season_year}: {len(schedule)} matches seeded")
-
     db.commit()
-    logger.info("✓ Database seeded successfully!")
-
-    # Save processed CSV for ML training
-    processed_dir = project_root / "data" / "processed"
-    processed_dir.mkdir(parents=True, exist_ok=True)
-    csv_df = pd.DataFrame(csv_rows)
-    csv_df["match_date"] = pd.to_datetime(csv_df["match_date"])
-    csv_df.to_csv(processed_dir / "matches_processed.csv", index=False)
-    logger.info(f"✓ CSV saved to {processed_dir / 'matches_processed.csv'} ({len(csv_df)} rows)")
-
     db.close()
+    logger.info(f"✓ Seeded {total_matches_seeded} valid simulated matches into database.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Seed MatchIQ with demo data")
-    parser.add_argument("--reset", action="store_true", help="Drop and recreate all tables")
+    parser = argparse.ArgumentParser(description="Seed database with simulated demo data")
+    parser.add_argument("--reset", action="store_true", help="Reset all data before seeding")
     args = parser.parse_args()
 
     seed_to_db(reset=args.reset)

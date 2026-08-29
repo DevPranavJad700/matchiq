@@ -1,0 +1,78 @@
+{
+  "dataset_name": "Premier League Match Dataset (2018-2024, 6 Seasons)",
+  "source_urls": {
+    "2018-19": "https://www.football-data.co.uk/mmz4281/1819/E0.csv",
+    "2019-20": "https://www.football-data.co.uk/mmz4281/1920/E0.csv",
+    "2020-21": "https://www.football-data.co.uk/mmz4281/2021/E0.csv",
+    "2021-22": "https://www.football-data.co.uk/mmz4281/2122/E0.csv",
+    "2022-23": "https://www.football-data.co.uk/mmz4281/2223/E0.csv",
+    "2023-24": "https://www.football-data.co.uk/mmz4281/2324/E0.csv"
+  },
+  "retrieved_at": "2026-08-29T06:30:26.447477+00:00",
+  "sha256": "6dbfbaf8eccecadb7dce4aa994825d5c2d058dcd29e46e67e4a43f45bc8387dd",
+  "total_matches": 2280,
+  "total_teams": 28,
+  "teams": [
+    "AFC Bournemouth",
+    "Arsenal FC",
+    "Aston Villa",
+    "Brentford FC",
+    "Brighton & Hove Albion",
+    "Burnley FC",
+    "Cardiff City",
+    "Chelsea FC",
+    "Crystal Palace",
+    "Everton FC",
+    "Fulham FC",
+    "Huddersfield Town",
+    "Leeds United",
+    "Leicester City",
+    "Liverpool FC",
+    "Luton Town",
+    "Manchester City",
+    "Manchester United",
+    "Newcastle United",
+    "Norwich City",
+    "Nottingham Forest",
+    "Sheffield United",
+    "Southampton FC",
+    "Tottenham Hotspur",
+    "Watford",
+    "West Bromwich Albion",
+    "West Ham United",
+    "Wolves"
+  ],
+  "seasons": [
+    "2018-19",
+    "2019-20",
+    "2020-21",
+    "2021-22",
+    "2022-23",
+    "2023-24"
+  ],
+  "season_match_counts": {
+    "2018-19": 380,
+    "2019-20": 380,
+    "2020-21": 380,
+    "2021-22": 380,
+    "2022-23": 380,
+    "2023-24": 380
+  },
+  "date_range": {
+    "start": "2018-08-10T15:00:00+00:00",
+    "end": "2024-05-19T16:00:00+00:00"
+  },
+  "first_match": {
+    "date": "2018-08-10T15:00:00+00:00",
+    "fixture": "Manchester United 2-1 Leicester City",
+    "result": "H"
+  },
+  "last_match": {
+    "date": "2024-05-19T16:00:00+00:00",
+    "fixture": "Sheffield United 0-3 Tottenham Hotspur",
+    "result": "A"
+  },
+  "is_authentic": true,
+  "data_mode": "real",
+  "xg_methodology": "Estimated xG proxy derived from shots on target, off-target shots, and goals"
+}

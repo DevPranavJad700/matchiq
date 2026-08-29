@@ -221,6 +221,33 @@ class HealthOut(BaseModel):
     version: str
     db_connected: bool
     model_loaded: bool
+    data_mode: str = "real"
+
+
+# ─── Provenance Schemas ────────────────────────────────────────────────────────
+
+class MatchSummaryDetail(BaseModel):
+    date: str
+    fixture: str
+    result: str
+
+
+class ProvenanceOut(BaseModel):
+    dataset_name: str
+    source_urls: dict[str, str]
+    retrieved_at: str
+    sha256: str
+    total_matches: int
+    total_teams: int
+    teams: list[str]
+    seasons: list[str]
+    season_match_counts: dict[str, int]
+    date_range: dict[str, str]
+    first_match: MatchSummaryDetail
+    last_match: MatchSummaryDetail
+    is_authentic: bool
+    data_mode: str
+    xg_methodology: str
 
 
 # ─── Pagination ────────────────────────────────────────────────────────────────

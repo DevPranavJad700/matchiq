@@ -13,7 +13,7 @@ import numpy as np
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.orm_models import Match, Standing, TeamMatchStatistic
+from app.models.orm_models import Match, Season, Team, TeamMatchStatistic
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +88,15 @@ class FeatureBuilderService:
         if as_of is None:
             as_of = datetime.now(timezone.utc)
 
-        home_features = self._compute_team_features(home_team_id, is_home=True, as_of=as_of)
-        away_features = self._compute_team_features(away_team_id, is_home=False, as_of=as_of)
+        standings_info = self._compute_standings_and_points(home_team_id, away_team_id, as_of)
+        home_features = self._compute_team_features(
+            home_team_id, is_home=True, as_of=as_of,
+            pos=standings_info["home_league_position"], pts=standings_info["home_points"]
+        )
+        away_features = self._compute_team_features(
+            away_team_id, is_home=False, as_of=as_of,
+            pos=standings_info["away_league_position"], pts=standings_info["away_points"]
+        )
         h2h_features = self._compute_h2h_features(home_team_id, away_team_id, as_of=as_of)
 
         # Difference features (home - away)
@@ -106,10 +113,108 @@ class FeatureBuilderService:
         vector = np.array([[combined.get(f, 0.0) for f in FEATURE_NAMES]], dtype=np.float64)
         return vector
 
-    def _compute_team_features(
-        self, team_id: int, is_home: bool, as_of: datetime
+    def _compute_standings_and_points(
+        self, home_team_id: int, away_team_id: int, as_of: datetime
     ) -> dict:
-        """Compute form, attack, defence, and league features for a team."""
+        """Compute pre-match season league table and points for both teams before as_of."""
+        # Find the season for matches as of this date
+        season_match = self.db.execute(
+            select(Match)
+            .where(Match.match_date <= as_of)
+            .order_by(Match.match_date.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+
+        season_id = season_match.season_id if season_match else None
+
+        if not season_id:
+            # Check if any season exists
+            any_season = self.db.execute(select(Season).limit(1)).scalar_one_or_none()
+            season_id = any_season.id if any_season else None
+
+        if not season_id:
+            return {
+                "home_league_position": 10.0, "home_points": 0.0,
+                "away_league_position": 10.0, "away_points": 0.0,
+            }
+
+        # Query all completed matches in this season before as_of
+        season_matches = list(self.db.execute(
+            select(Match)
+            .where(
+                Match.season_id == season_id,
+                Match.result.isnot(None),
+                Match.match_date < as_of,
+            )
+            .order_by(Match.match_date)
+        ).scalars().all())
+
+        if not season_matches:
+            return {
+                "home_league_position": 10.0, "home_points": 0.0,
+                "away_league_position": 10.0, "away_points": 0.0,
+            }
+
+        # Track table
+        all_season_teams = set()
+        for m in season_matches:
+            all_season_teams.add(m.home_team_id)
+            all_season_teams.add(m.away_team_id)
+        all_season_teams.add(home_team_id)
+        all_season_teams.add(away_team_id)
+
+        table = {
+            tid: {"played": 0, "won": 0, "drawn": 0, "lost": 0, "gf": 0, "ga": 0, "gd": 0, "pts": 0}
+            for tid in all_season_teams
+        }
+
+        for m in season_matches:
+            ht, at = m.home_team_id, m.away_team_id
+            hg, ag = int(m.home_score or 0), int(m.away_score or 0)
+            res = m.result
+
+            table[ht]["played"] += 1
+            table[ht]["gf"] += hg
+            table[ht]["ga"] += ag
+            table[ht]["gd"] = table[ht]["gf"] - table[ht]["ga"]
+
+            table[at]["played"] += 1
+            table[at]["gf"] += ag
+            table[at]["ga"] += hg
+            table[at]["gd"] = table[at]["gf"] - table[at]["ga"]
+
+            if res == "H":
+                table[ht]["won"] += 1
+                table[ht]["pts"] += 3
+                table[at]["lost"] += 1
+            elif res == "A":
+                table[at]["won"] += 1
+                table[at]["pts"] += 3
+                table[ht]["lost"] += 1
+            else:
+                table[ht]["drawn"] += 1
+                table[ht]["pts"] += 1
+                table[at]["drawn"] += 1
+                table[at]["pts"] += 1
+
+        # Rank teams
+        sorted_teams = sorted(
+            list(all_season_teams),
+            key=lambda t: (-table[t]["pts"], -table[t]["gd"], -table[t]["gf"], t)
+        )
+        pos_map = {t: idx + 1 for idx, t in enumerate(sorted_teams)}
+
+        return {
+            "home_league_position": float(pos_map.get(home_team_id, 10.0)),
+            "home_points": float(table[home_team_id]["pts"]),
+            "away_league_position": float(pos_map.get(away_team_id, 10.0)),
+            "away_points": float(table[away_team_id]["pts"]),
+        }
+
+    def _compute_team_features(
+        self, team_id: int, is_home: bool, as_of: datetime, pos: float, pts: float
+    ) -> dict:
+        """Compute form, attack, defence, and venue performance for a team."""
         prefix = "home" if is_home else "away"
 
         # --- Last 10 completed matches ---
@@ -120,55 +225,30 @@ class FeatureBuilderService:
         # --- Aggregate stats (last 10) ---
         stats = self._get_aggregate_stats(team_id, [m.id for m in recent_matches])
 
-        # --- Home/Away specific performance ---
-        if is_home:
-            venue_matches = [m for m in recent_matches if m.home_team_id == team_id]
-            venue_win_result = "H"
-        else:
-            venue_matches = [m for m in recent_matches if m.away_team_id == team_id]
-            venue_win_result = "A"
+        # --- Home/Away specific performance (all prior venue matches before as_of) ---
+        venue_matches = self._get_venue_matches(team_id, is_home=is_home, as_of=as_of)
+        venue_win_result = "H" if is_home else "A"
 
         venue_wins = sum(1 for m in venue_matches if m.result == venue_win_result)
         venue_win_rate = venue_wins / len(venue_matches) if venue_matches else 0.0
         venue_goals = self._get_goals_for_venue(team_id, venue_matches, is_home)
 
-        # --- League position / points ---
-        standing = self._get_latest_standing(team_id, as_of)
-        position = standing.position if standing else 10
-        if standing:
-            points = standing.points
-        else:
-            # Compute cumulative points from all prior completed matches before as_of
-            all_past = self._get_recent_matches(team_id, as_of, limit=100)
-            points = sum(self._compute_match_pts(team_id, m) for m in all_past)
-
         return {
-            f"{prefix}_form_pts_last5": form5["points"],
-            f"{prefix}_form_wins_last5": form5["wins"],
-            f"{prefix}_form_draws_last5": form5["draws"],
-            f"{prefix}_form_losses_last5": form5["losses"],
-            f"{prefix}_form_gd_last5": form5["gd"],
-            f"{prefix}_avg_goals_scored": stats["avg_goals_scored"],
-            f"{prefix}_avg_goals_conceded": stats["avg_goals_conceded"],
-            f"{prefix}_avg_shots": stats["avg_shots"],
-            f"{prefix}_avg_shots_on_target": stats["avg_shots_on_target"],
-            f"{prefix}_avg_xg": stats["avg_xg"],
-            f"{prefix}_{'home' if is_home else 'away'}_win_rate": venue_win_rate,
-            f"{prefix}_{'home' if is_home else 'away'}_goals_avg": venue_goals,
-            f"{prefix}_league_position": float(position),
-            f"{prefix}_points": float(points),
+            f"{prefix}_form_pts_last5": float(form5["points"]),
+            f"{prefix}_form_wins_last5": float(form5["wins"]),
+            f"{prefix}_form_draws_last5": float(form5["draws"]),
+            f"{prefix}_form_losses_last5": float(form5["losses"]),
+            f"{prefix}_form_gd_last5": float(form5["gd"]),
+            f"{prefix}_avg_goals_scored": float(stats["avg_goals_scored"]),
+            f"{prefix}_avg_goals_conceded": float(stats["avg_goals_conceded"]),
+            f"{prefix}_avg_shots": float(stats["avg_shots"]),
+            f"{prefix}_avg_shots_on_target": float(stats["avg_shots_on_target"]),
+            f"{prefix}_avg_xg": float(stats["avg_xg"]),
+            f"{prefix}_{'home' if is_home else 'away'}_win_rate": float(venue_win_rate),
+            f"{prefix}_{'home' if is_home else 'away'}_goals_avg": float(venue_goals),
+            f"{prefix}_league_position": float(pos),
+            f"{prefix}_points": float(pts),
         }
-
-    def _compute_match_pts(self, team_id: int, match) -> int:
-        """Compute points earned by team_id in a single match."""
-        if match.result is None:
-            return 0
-        is_home = match.home_team_id == team_id
-        if (is_home and match.result == "H") or (not is_home and match.result == "A"):
-            return 3
-        if match.result == "D":
-            return 1
-        return 0
 
     def _compute_form(self, team_id: int, matches: list) -> dict:
         """Compute form stats from a list of matches."""
@@ -192,6 +272,9 @@ class FeatureBuilderService:
             if stat:
                 gf += stat.goals or 0
                 ga += stat.goals_conceded or 0
+            else:
+                gf += (m.home_score if is_home else m.away_score) or 0
+                ga += (m.away_score if is_home else m.home_score) or 0
 
         return {"points": pts, "wins": wins, "draws": draws, "losses": losses, "gd": gf - ga}
 
@@ -211,7 +294,24 @@ class FeatureBuilderService:
 
         # Load statistics eagerly for each match
         for match in matches:
-            _ = match.statistics  # trigger load
+            _ = match.statistics
+        return matches
+
+    def _get_venue_matches(self, team_id: int, is_home: bool, as_of: datetime) -> list:
+        """Get all past completed matches at the specified venue before as_of."""
+        team_filter = Match.home_team_id == team_id if is_home else Match.away_team_id == team_id
+        stmt = (
+            select(Match)
+            .where(
+                team_filter,
+                Match.result.isnot(None),
+                Match.match_date < as_of,
+            )
+            .order_by(Match.match_date.desc())
+        )
+        matches = list(self.db.execute(stmt).scalars().all())
+        for match in matches:
+            _ = match.statistics
         return matches
 
     def _get_aggregate_stats(self, team_id: int, match_ids: list[int]) -> dict:
@@ -237,7 +337,7 @@ class FeatureBuilderService:
 
         def safe_avg(attr: str) -> float:
             vals = [getattr(s, attr) for s in stats if getattr(s, attr) is not None]
-            return round(sum(vals) / len(vals), 3) if vals else 0.0
+            return round(sum(vals) / len(vals), 4) if vals else 0.0
 
         return {
             "avg_goals_scored": safe_avg("goals"),
@@ -254,20 +354,14 @@ class FeatureBuilderService:
             stat = next((s for s in m.statistics if s.team_id == team_id), None)
             if stat and stat.goals is not None:
                 goals.append(stat.goals)
-        return round(sum(goals) / len(goals), 3) if goals else 0.0
-
-    def _get_latest_standing(self, team_id: int, as_of: datetime):
-        return self.db.execute(
-            select(Standing)
-            .where(Standing.team_id == team_id, Standing.updated_at <= as_of)
-            .order_by(Standing.updated_at.desc())
-            .limit(1)
-        ).scalar_one_or_none()
+            else:
+                goals.append((m.home_score if is_home else m.away_score) or 0)
+        return round(sum(goals) / len(goals), 4) if goals else 0.0
 
     def _compute_h2h_features(
         self, home_team_id: int, away_team_id: int, as_of: datetime
     ) -> dict:
-        """Compute head-to-head statistics from last 5 meetings."""
+        """Compute head-to-head statistics from last 5 meetings before as_of."""
         stmt = (
             select(Match)
             .where(
@@ -313,6 +407,6 @@ class FeatureBuilderService:
             "h2h_home_wins": float(home_wins),
             "h2h_away_wins": float(away_wins),
             "h2h_draws": float(draws),
-            "h2h_home_goals_avg": round(sum(home_goals_list) / len(home_goals_list), 2) if home_goals_list else 0.0,
-            "h2h_away_goals_avg": round(sum(away_goals_list) / len(away_goals_list), 2) if away_goals_list else 0.0,
+            "h2h_home_goals_avg": round(sum(home_goals_list) / len(home_goals_list), 4) if home_goals_list else 0.0,
+            "h2h_away_goals_avg": round(sum(away_goals_list) / len(away_goals_list), 4) if away_goals_list else 0.0,
         }

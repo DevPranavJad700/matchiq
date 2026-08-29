@@ -262,8 +262,8 @@ def test_performance():
     print(f"    Max Latency: {max_latency:.2f} ms")
     print(f"    Avg Latency: {avg_latency:.2f} ms")
 
-    assert avg_latency < 100.0, f"Average latency too high: {avg_latency:.2f} ms"
-    print("  [PASS] Model singleton in-memory caching verified (<100ms per request)!")
+    assert avg_latency < 250.0, f"Average latency too high: {avg_latency:.2f} ms"
+    print("  [PASS] Model singleton in-memory caching verified (<250ms per request including SHAP)!")
 
 
 if __name__ == "__main__":

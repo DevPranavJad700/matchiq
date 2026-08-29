@@ -1,25 +1,30 @@
 """Real Historical Data Fetcher & Ingestion Script for MatchIQ.
 
 Downloads authentic historical Premier League match data from football-data.co.uk CSV archives
-(2021-22, 2022-23, 2023-24 seasons), standardizes team names, converts columns to MatchIQ schema,
-and saves the clean dataset to `data/processed/matches_processed.csv`.
-
-Optionally populates the PostgreSQL database if database connection is active.
+(6 seasons: 2018-19 through 2023-24), standardizes team names, converts columns to MatchIQ schema,
+saves the clean dataset to `data/processed/matches_processed.csv`, and writes a dataset provenance
+manifest with SHA-256 checksums to `data/processed/provenance.json`.
 
 Usage:
     python scripts/fetch_real_data.py [--to-db]
 
 Sources:
+    - https://www.football-data.co.uk/mmz4281/1819/E0.csv (2018-19 Premier League)
+    - https://www.football-data.co.uk/mmz4281/1920/E0.csv (2019-20 Premier League)
+    - https://www.football-data.co.uk/mmz4281/2021/E0.csv (2020-21 Premier League)
     - https://www.football-data.co.uk/mmz4281/2122/E0.csv (2021-22 Premier League)
     - https://www.football-data.co.uk/mmz4281/2223/E0.csv (2022-23 Premier League)
     - https://www.football-data.co.uk/mmz4281/2324/E0.csv (2023-24 Premier League)
 """
 
 import argparse
+import hashlib
 import io
+import json
 import logging
+import os
 import sys
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
 import urllib.request
 
@@ -28,21 +33,26 @@ import pandas as pd
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "backend"))
+sys.path.insert(0, str(project_root))
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 logger = logging.getLogger(__name__)
 
 DATA_URLS = {
+    "2018-19": "https://www.football-data.co.uk/mmz4281/1819/E0.csv",
+    "2019-20": "https://www.football-data.co.uk/mmz4281/1920/E0.csv",
+    "2020-21": "https://www.football-data.co.uk/mmz4281/2021/E0.csv",
     "2021-22": "https://www.football-data.co.uk/mmz4281/2122/E0.csv",
     "2022-23": "https://www.football-data.co.uk/mmz4281/2223/E0.csv",
     "2023-24": "https://www.football-data.co.uk/mmz4281/2324/E0.csv",
 }
 
-# Standardize team names to match canonical names
+# Standardize team names to canonical names across all seasons
 TEAM_NAME_MAP = {
     "Man City": "Manchester City",
     "Man United": "Manchester United",
     "Spurs": "Tottenham Hotspur",
+    "Tottenham": "Tottenham Hotspur",
     "Newcastle": "Newcastle United",
     "West Ham": "West Ham United",
     "Brighton": "Brighton & Hove Albion",
@@ -66,27 +76,42 @@ TEAM_NAME_MAP = {
     "Arsenal": "Arsenal FC",
     "Chelsea": "Chelsea FC",
     "Liverpool": "Liverpool FC",
+    "Cardiff": "Cardiff City",
+    "Huddersfield": "Huddersfield Town",
+    "West Brom": "West Bromwich Albion",
 }
 
 
-def download_season_csv(url: str) -> pd.DataFrame | None:
-    """Download and read CSV from football-data.co.uk."""
+def download_season_csv(season: str, url: str) -> pd.DataFrame:
+    """Download CSV from football-data.co.uk or load from cached raw directory."""
+    raw_dir = project_root / "data" / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    raw_file = raw_dir / f"E0_{season.replace('-', '')}.csv"
+
+    # Attempt download from source
     try:
         req = urllib.request.Request(
             url,
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) MatchIQ/1.0"}
         )
-        with urllib.request.urlopen(req, timeout=10) as response:
+        with urllib.request.urlopen(req, timeout=15) as response:
             csv_bytes = response.read()
+            raw_file.write_bytes(csv_bytes)
+            logger.info(f"Downloaded and cached {season} CSV ({len(csv_bytes)} bytes) to {raw_file}")
             df = pd.read_csv(io.BytesIO(csv_bytes), encoding="latin1")
             return df
     except Exception as e:
-        logger.warning(f"Failed to download {url}: {e}")
-        return None
+        logger.warning(f"Download failed for {url}: {e}")
+        if raw_file.exists():
+            logger.info(f"Loading cached raw file from {raw_file}...")
+            return pd.read_csv(raw_file, encoding="latin1")
+        raise RuntimeError(
+            f"Failed to obtain authentic Premier League data for {season} from {url} and no cache exists."
+        ) from e
 
 
 def parse_and_clean_matches() -> pd.DataFrame:
-    """Download, parse, clean, and combine 3 seasons of historical Premier League results."""
+    """Download, parse, clean, and combine 6 seasons of authentic Premier League results."""
     all_rows = []
     team_registry = {}
     team_counter = 1
@@ -102,35 +127,44 @@ def parse_and_clean_matches() -> pd.DataFrame:
     match_id = 1
 
     for season, url in DATA_URLS.items():
-        logger.info(f"Downloading historical data for season {season}...")
-        df = download_season_csv(url)
+        logger.info(f"Fetching authentic historical data for season {season}...")
+        df = download_season_csv(season, url)
 
-        if df is None or df.empty:
-            logger.warning(f"Skipping season {season} due to download failure.")
-            continue
-
-        # Expected columns: Date, HomeTeam, AwayTeam, FTHG, FTAG, FTR, HS, AS, HST, AST
+        # Expected columns: Date, HomeTeam, AwayTeam, FTHG, FTAG, FTR
         required_cols = ["Date", "HomeTeam", "AwayTeam", "FTHG", "FTAG", "FTR"]
-        if not all(col in df.columns for col in required_cols):
-            logger.warning(f"CSV missing expected columns for {season}")
-            continue
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            raise ValueError(f"CSV for {season} is missing required columns: {missing_cols}")
 
-        for _, row in df.iterrows():
+        season_matches = []
+        for row_idx, row in df.iterrows():
             if pd.isna(row["HomeTeam"]) or pd.isna(row["AwayTeam"]):
                 continue
 
-            ht_id = get_team_id(str(row["HomeTeam"]))
-            at_id = get_team_id(str(row["AwayTeam"]))
+            raw_ht = str(row["HomeTeam"]).strip()
+            raw_at = str(row["AwayTeam"]).strip()
+            clean_ht = TEAM_NAME_MAP.get(raw_ht, raw_ht)
+            clean_at = TEAM_NAME_MAP.get(raw_at, raw_at)
 
-            # Parse date — football-data.co.uk uses DD/MM/YYYY or DD/MM/YY
+            ht_id = get_team_id(clean_ht)
+            at_id = get_team_id(clean_at)
+
+            # Parse date & time
             date_str = str(row["Date"]).strip()
+            time_str = str(row["Time"]).strip() if "Time" in df.columns and pd.notna(row["Time"]) else "15:00"
             try:
-                if len(date_str.split("/")[-1]) == 2:
-                    match_date = datetime.strptime(date_str, "%d/%m/%y").replace(tzinfo=timezone.utc)
+                parts = date_str.split("/")
+                dt_str = f"{date_str} {time_str}"
+                if len(parts) == 3 and len(parts[-1]) == 2:
+                    match_date = datetime.strptime(dt_str, "%d/%m/%y %H:%M").replace(tzinfo=timezone.utc)
                 else:
-                    match_date = datetime.strptime(date_str, "%d/%m/%Y").replace(tzinfo=timezone.utc)
+                    match_date = datetime.strptime(dt_str, "%d/%m/%Y %H:%M").replace(tzinfo=timezone.utc)
             except Exception:
-                match_date = datetime(2022, 1, 1, tzinfo=timezone.utc)
+                try:
+                    match_date = datetime.strptime(date_str, "%d/%m/%Y").replace(tzinfo=timezone.utc)
+                except Exception as ex:
+                    logger.error(f"Error parsing date '{date_str}': {ex}")
+                    continue
 
             hg = int(row["FTHG"]) if not pd.isna(row["FTHG"]) else 0
             ag = int(row["FTAG"]) if not pd.isna(row["FTAG"]) else 0
@@ -141,18 +175,18 @@ def parse_and_clean_matches() -> pd.DataFrame:
             hst = int(row["HST"]) if "HST" in df.columns and not pd.isna(row["HST"]) else int(min(hs, max(1, hg * 2)))
             ast = int(row["AST"]) if "AST" in df.columns and not pd.isna(row["AST"]) else int(min(as_, max(0, ag * 2)))
 
-            # Estimate xG from shots on target + goals if raw xG is absent
-            hxg = round(float(hg * 0.4 + hst * 0.15 + (hs - hst) * 0.05), 2)
-            axg = round(float(ag * 0.4 + ast * 0.15 + (as_ - ast) * 0.05), 2)
+            # Estimated xG proxy calculated from goals, shots on target, and shots off target
+            h_est_xg = round(float(hg * 0.4 + hst * 0.15 + (hs - hst) * 0.05), 2)
+            a_est_xg = round(float(ag * 0.4 + ast * 0.15 + (as_ - ast) * 0.05), 2)
 
-            all_rows.append({
+            season_matches.append({
                 "match_id": match_id,
                 "match_date": match_date.isoformat(),
                 "season": season,
                 "home_team_id": ht_id,
                 "away_team_id": at_id,
-                "home_team_name": TEAM_NAME_MAP.get(str(row["HomeTeam"]).strip(), str(row["HomeTeam"]).strip()),
-                "away_team_name": TEAM_NAME_MAP.get(str(row["AwayTeam"]).strip(), str(row["AwayTeam"]).strip()),
+                "home_team_name": clean_ht,
+                "away_team_name": clean_at,
                 "result": res,
                 "home_goals": hg,
                 "away_goals": ag,
@@ -160,128 +194,140 @@ def parse_and_clean_matches() -> pd.DataFrame:
                 "away_shots": as_,
                 "home_sot": hst,
                 "away_sot": ast,
-                "home_xg": hxg,
-                "away_xg": axg,
+                "home_xg": h_est_xg,
+                "away_xg": a_est_xg,
+                "home_estimated_xg": h_est_xg,
+                "away_estimated_xg": a_est_xg,
             })
             match_id += 1
 
+        logger.info(f"Loaded {len(season_matches)} matches for season {season}")
+        all_rows.extend(season_matches)
+
     combined_df = pd.DataFrame(all_rows)
-    logger.info(f"Parsed {len(combined_df)} matches across {len(team_registry)} teams.")
+    # Sort chronologically by date
+    combined_df["match_date_dt"] = pd.to_datetime(combined_df["match_date"])
+    combined_df = combined_df.sort_values("match_date_dt").reset_index(drop=True)
+    combined_df["match_id"] = combined_df.index + 1
+    combined_df = combined_df.drop(columns=["match_date_dt"])
+
+    logger.info(f"✓ Parsed {len(combined_df)} authentic matches across {len(team_registry)} teams.")
     return combined_df
 
 
-def save_dataset(df: pd.DataFrame) -> None:
-    """Save processed dataset to data/processed/matches_processed.csv."""
+def save_dataset_and_provenance(df: pd.DataFrame) -> dict:
+    """Save processed dataset and write dataset provenance manifest with SHA-256."""
     processed_dir = project_root / "data" / "processed"
     processed_dir.mkdir(parents=True, exist_ok=True)
     out_path = processed_dir / "matches_processed.csv"
-    
-    # Save standard training format
-    df["match_date"] = pd.to_datetime(df["match_date"])
+
+    # Save processed CSV
     df.to_csv(out_path, index=False)
+    csv_bytes = out_path.read_bytes()
+    sha256_hash = hashlib.sha256(csv_bytes).hexdigest()
+
+    unique_teams = sorted(list(set(df["home_team_name"].unique()) | set(df["away_team_name"].unique())))
+    seasons = sorted(df["season"].unique().tolist())
+    first_row = df.iloc[0]
+    last_row = df.iloc[-1]
+
+    provenance = {
+        "dataset_name": "Premier League Match Dataset (2018-2024, 6 Seasons)",
+        "source_urls": DATA_URLS,
+        "retrieved_at": datetime.now(timezone.utc).isoformat(),
+        "sha256": sha256_hash,
+        "total_matches": len(df),
+        "total_teams": len(unique_teams),
+        "teams": unique_teams,
+        "seasons": seasons,
+        "season_match_counts": {s: int((df["season"] == s).sum()) for s in seasons},
+        "date_range": {
+            "start": str(first_row["match_date"]),
+            "end": str(last_row["match_date"]),
+        },
+        "first_match": {
+            "date": str(first_row["match_date"]),
+            "fixture": f"{first_row['home_team_name']} {first_row['home_goals']}-{first_row['away_goals']} {first_row['away_team_name']}",
+            "result": str(first_row["result"]),
+        },
+        "last_match": {
+            "date": str(last_row["match_date"]),
+            "fixture": f"{last_row['home_team_name']} {last_row['home_goals']}-{last_row['away_goals']} {last_row['away_team_name']}",
+            "result": str(last_row["result"]),
+        },
+        "is_authentic": True,
+        "data_mode": "real",
+        "xg_methodology": "Estimated xG proxy derived from shots on target, off-target shots, and goals",
+    }
+
+    provenance_path = processed_dir / "provenance.json"
+    with open(provenance_path, "w") as f:
+        json.dump(provenance, f, indent=2)
+
     logger.info(f"✓ Saved authentic historical matches to {out_path} ({len(df)} rows)")
-
-
-def generate_fallback_data() -> pd.DataFrame:
-    """Fallback generator if network download fails on CI."""
-    import random
-    logger.info("Generating fallback match dataset for CI environment...")
-    random.seed(42)
-    np.random.seed(42)
-
-    TEAMS = [
-        ('Arsenal FC', 0.85), ('Chelsea FC', 0.80), ('Liverpool FC', 0.88),
-        ('Manchester City', 0.92), ('Manchester United', 0.78), ('Tottenham Hotspur', 0.75),
-        ('Newcastle United', 0.72), ('Aston Villa', 0.70), ('West Ham United', 0.65),
-        ('Brighton & Hove Albion', 0.68), ('Brentford FC', 0.62), ('Fulham FC', 0.60),
-        ('Crystal Palace', 0.58), ('Wolves', 0.57), ('Everton FC', 0.55),
-        ('Nottingham Forest', 0.54), ('Leicester City', 0.60), ('Southampton FC', 0.45),
-        ('Burnley FC', 0.42), ('Luton Town', 0.40),
-    ]
-
-    def sim(hs, aws):
-        hxg = max(0.5, hs * 2.5 + 0.25 - aws * 1.2)
-        axg = max(0.3, aws * 2.2 - hs * 1.0)
-        hg = int(np.random.poisson(hxg))
-        ag = int(np.random.poisson(axg))
-        r = 'H' if hg > ag else ('A' if ag > hg else 'D')
-        return hg, ag, r, hxg, axg
-
-    rows = []
-    mid = 1
-    for season_idx, year in enumerate(['2021-22', '2022-23', '2023-24']):
-        start = datetime(2021 + season_idx, 8, 14, tzinfo=timezone.utc)
-        for hi in range(20):
-            for ai in range(20):
-                if hi == ai: continue
-                hg, ag, r, hxg, axg = sim(TEAMS[hi][1], TEAMS[ai][1])
-                hs = max(3, int(np.random.normal(hxg * 6, 3)))
-                as_ = max(2, int(np.random.normal(axg * 6, 3)))
-                date = start + timedelta(days=random.randint(0, 250))
-                rows.append({
-                    'match_id': mid, 'match_date': date.isoformat(), 'season': year,
-                    'home_team_id': hi + 1, 'away_team_id': ai + 1,
-                    'home_team_name': TEAMS[hi][0], 'away_team_name': TEAMS[ai][0],
-                    'result': r, 'home_goals': hg, 'away_goals': ag,
-                    'home_shots': hs, 'away_shots': as_,
-                    'home_sot': min(hs, max(1, int(np.random.normal(hxg * 2.5, 2)))),
-                    'away_sot': min(as_, max(0, int(np.random.normal(axg * 2.5, 2)))),
-                    'home_xg': round(hxg, 2), 'away_xg': round(axg, 2)
-                })
-                mid += 1
-    return pd.DataFrame(rows)
+    logger.info(f"✓ Saved dataset provenance manifest to {provenance_path} (SHA-256: {sha256_hash[:16]}...)")
+    return provenance
 
 
 def seed_real_data_to_db(df: pd.DataFrame) -> None:
-    """Ingest clean match records into database."""
+    """Ingest clean match records into the database with accurate per-season standings."""
     try:
         from app.db.session import SessionLocal, engine
         from app.models.orm_models import (
-            Base, League, Season, Team, Match, TeamMatchStatistic, Standing
+            Base, League, Season, Team, Match, TeamMatchStatistic, Standing, ModelVersion, Prediction
         )
         from sqlalchemy import select
 
-        db = SessionLocal()
         Base.metadata.create_all(engine)
+        db = SessionLocal()
 
-        logger.info("Ingesting historical match records into database...")
+        logger.info("Ingesting authentic historical match records into database...")
+
+        # 0. Clean wipe prior records to avoid ID / schema collisions
+        db.query(Prediction).delete()
+        db.query(TeamMatchStatistic).delete()
+        db.query(Standing).delete()
+        db.query(Match).delete()
+        db.query(Team).delete()
+        db.query(Season).delete()
+        db.query(League).delete()
+        db.commit()
 
         # 1. League
-        league = db.execute(select(League).where(League.name == "Premier League")).scalar_one_or_none()
-        if not league:
-            league = League(name="Premier League", short_name="PL", country="England")
-            db.add(league)
-            db.flush()
+        league = League(name="Premier League", short_name="PL", country="England")
+        db.add(league)
+        db.flush()
 
         # 2. Seasons
         season_map = {}
-        for season_year in df["season"].unique():
-            season = db.execute(select(Season).where(Season.league_id == league.id, Season.year == season_year)).scalar_one_or_none()
-            if not season:
-                season = Season(league_id=league.id, year=str(season_year))
-                db.add(season)
-                db.flush()
+        for season_year in sorted(df["season"].unique()):
+            season = Season(league_id=league.id, year=str(season_year))
+            db.add(season)
+            db.flush()
             season_map[season_year] = season
 
-        # 3. Teams
+        # 3. Teams (use explicit IDs matching df)
         team_map = {}
-        unique_teams = sorted(list(set(df["home_team_name"].unique()) | set(df["away_team_name"].unique())))
-        for tname in unique_teams:
-            team = db.execute(select(Team).where(Team.name == tname)).scalar_one_or_none()
-            if not team:
-                short_name = tname[:3].upper()
-                team = Team(name=tname, short_name=short_name, country="England", league_id=league.id)
-                db.add(team)
-                db.flush()
+        team_id_lookup = {}
+        for _, row in df.iterrows():
+            team_id_lookup[row["home_team_name"]] = int(row["home_team_id"])
+            team_id_lookup[row["away_team_name"]] = int(row["away_team_id"])
+
+        for tname, tid in sorted(team_id_lookup.items(), key=lambda x: x[1]):
+            short_name = tname[:3].upper()
+            team = Team(id=tid, name=tname, short_name=short_name, country="England", league_id=league.id)
+            db.add(team)
+            db.flush()
             team_map[tname] = team
 
-        # 4. Matches & Statistics
-        standings_tracker = {t.id: {"position": 10, "played": 0, "won": 0, "drawn": 0, "lost": 0, "goals_for": 0, "goals_against": 0, "goal_difference": 0, "points": 0} for t in team_map.values()}
+        # 4. Insert Matches & Statistics with per-season standing tracking
+        season_standings = {s: {tname: {"played": 0, "won": 0, "drawn": 0, "lost": 0, "goals_for": 0, "goals_against": 0, "points": 0} for tname in team_map} for s in season_map}
 
         for _, row in df.iterrows():
             ht = team_map[row["home_team_name"]]
             at = team_map[row["away_team_name"]]
-            season = season_map[row["season"]]
+            season_str = row["season"]
+            season = season_map[season_str]
             match_date = pd.to_datetime(row["match_date"]).to_pydatetime()
             if match_date.tzinfo is None:
                 match_date = match_date.replace(tzinfo=timezone.utc)
@@ -314,44 +360,79 @@ def seed_real_data_to_db(df: pd.DataFrame) -> None:
                 xg=float(row["away_xg"])
             ))
 
-            # Standings update
-            for t_obj, is_h, gf, ga, res in [(ht, True, int(row["home_goals"]), int(row["away_goals"]), str(row["result"])),
-                                             (at, False, int(row["away_goals"]), int(row["home_goals"]), str(row["result"]))]:
-                st = standings_tracker[t_obj.id]
-                st["played"] += 1
-                st["goals_for"] += gf
-                st["goals_against"] += ga
-                st["goal_difference"] = st["goals_for"] - st["goals_against"]
-                if (is_h and res == "H") or (not is_h and res == "A"):
-                    st["won"] += 1; st["points"] += 3
-                elif res == "D":
-                    st["drawn"] += 1; st["points"] += 1
-                else:
-                    st["lost"] += 1
+            # Update per-season standings tracker
+            hg, ag, res = int(row["home_goals"]), int(row["away_goals"]), str(row["result"])
+            st_h = season_standings[season_str][row["home_team_name"]]
+            st_a = season_standings[season_str][row["away_team_name"]]
 
-        # Commit final standings
-        sorted_teams = sorted(standings_tracker.items(), key=lambda x: (-x[1]["points"], -x[1]["goal_difference"], -x[1]["goals_for"]))
-        latest_season_id = list(season_map.values())[-1].id
-        for pos, (tid, stats) in enumerate(sorted_teams, start=1):
-            stats["position"] = pos
-            db.add(Standing(season_id=latest_season_id, team_id=tid, **stats))
+            st_h["played"] += 1
+            st_h["goals_for"] += hg
+            st_h["goals_against"] += ag
+            st_a["played"] += 1
+            st_a["goals_for"] += ag
+            st_a["goals_against"] += hg
+
+            if res == "H":
+                st_h["won"] += 1
+                st_h["points"] += 3
+                st_a["lost"] += 1
+            elif res == "A":
+                st_a["won"] += 1
+                st_a["points"] += 3
+                st_h["lost"] += 1
+            else:
+                st_h["drawn"] += 1
+                st_h["points"] += 1
+                st_a["drawn"] += 1
+                st_a["points"] += 1
+
+        # 5. Commit final standings per season for all active teams in each season
+        for season_str, t_dict in season_standings.items():
+            season_obj = season_map[season_str]
+            active_season_teams = [
+                (tname, stats) for tname, stats in t_dict.items() if stats["played"] > 0
+            ]
+            sorted_teams = sorted(
+                active_season_teams,
+                key=lambda x: (-x[1]["points"], -(x[1]["goals_for"] - x[1]["goals_against"]), -x[1]["goals_for"])
+            )
+            for pos, (tname, stats) in enumerate(sorted_teams, start=1):
+                tid = team_map[tname].id
+                gd = stats["goals_for"] - stats["goals_against"]
+                db.add(Standing(
+                    season_id=season_obj.id,
+                    team_id=tid,
+                    position=pos,
+                    played=stats["played"],
+                    won=stats["won"],
+                    drawn=stats["drawn"],
+                    lost=stats["lost"],
+                    goals_for=stats["goals_for"],
+                    goals_against=stats["goals_against"],
+                    goal_difference=gd,
+                    points=stats["points"],
+                ))
 
         db.commit()
         db.close()
         logger.info("✓ Database successfully populated with authentic Premier League match records.")
     except Exception as e:
-        logger.warning(f"Database ingestion warning: {e}")
+        logger.error(f"Database ingestion error: {e}")
+        raise
+
+
+def run_ingestion(to_db: bool = False) -> pd.DataFrame:
+    """Execute complete real data ingestion pipeline."""
+    df = parse_and_clean_matches()
+    save_dataset_and_provenance(df)
+    if to_db:
+        seed_real_data_to_db(df)
+    return df
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Fetch real historical Premier League data")
+    parser = argparse.ArgumentParser(description="Fetch authentic historical Premier League data")
     parser.add_argument("--to-db", action="store_true", help="Populate database with clean historical data")
     args = parser.parse_args()
 
-    df = parse_and_clean_matches()
-    if df.empty:
-        df = generate_fallback_data()
-    
-    save_dataset(df)
-    if args.to_db:
-        seed_real_data_to_db(df)
+    run_ingestion(to_db=args.to_db)

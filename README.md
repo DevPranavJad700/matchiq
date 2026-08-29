@@ -1,6 +1,6 @@
 # ⚽ MatchIQ — Football Match Outcome Prediction & Analytics
 
-> An end-to-end, production-quality ML platform for predicting Premier League match outcomes using authentic historical data, time-aware feature engineering, Logistic Regression / Random Forest, SHAP explainability, and a modern React dashboard.
+> An end-to-end, production-quality ML platform for predicting Premier League match outcomes using authentic historical match statistics (2021–2024 from football-data.co.uk), time-aware feature engineering with anti-leakage dynamic standings, multi-model evaluation (XGBoost, Random Forest, Logistic Regression), SHAP explainability, and a modern React dashboard.
 
 [![CI](https://github.com/DevPranavJad700/matchiq/actions/workflows/ci.yml/badge.svg)](https://github.com/DevPranavJad700/matchiq/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
@@ -13,70 +13,59 @@
 
 ## 🎯 What is MatchIQ?
 
-MatchIQ is a **full-stack, production-ready** portfolio platform that demonstrates:
+MatchIQ is a **full-stack, production-ready** platform demonstrating:
 
 | Skill Area | Technologies & Architecture |
 |---|---|
-| **Machine Learning** | Logistic Regression, Random Forest, XGBoost, scikit-learn |
+| **Machine Learning** | XGBoost, Random Forest, Logistic Regression, scikit-learn |
 | **Explainability (XAI)** | SHAP (TreeExplainer/LinearExplainer) — feature-level prediction reasoning |
-| **Data Engineering** | Authentic historical Premier League ingestion (football-data.co.uk), anti-leakage rolling windows |
-| **Backend API** | FastAPI, SQLAlchemy 2.0, Alembic, Pydantic v2, PostgreSQL, Repository Pattern |
-| **Frontend** | React 19, TypeScript, Vitest, TanStack Query, Recharts, Tailwind CSS v4 |
+| **Data Engineering** | Authentic historical Premier League ingestion (football-data.co.uk), dynamic pre-match standings, anti-leakage rolling windows |
+| **Dataset Provenance** | Cryptographic SHA-256 checksums, URL source tracking, training manifests |
+| **Backend API** | FastAPI, SQLAlchemy 2.0, Alembic, Pydantic v2, PostgreSQL / SQLite, Repository Pattern |
+| **Frontend** | React 19, TypeScript, Vitest, TanStack Query, Recharts, Tailwind CSS |
 | **DevOps** | Docker, Docker Compose, Nginx, GitHub Actions CI/CD |
-| **Testing** | 26 Pytest backend tests, 7 Vitest frontend component tests |
+| **Testing** | 32 Pytest backend tests (API, feature parity, real fixture regression), 7 Vitest frontend component tests |
 | **Documentation** | [Interview Guide](docs/interview-guide.md), [ML Analysis](docs/ml-model-analysis.md), [Deployment Guide](docs/deployment-guide.md) |
-
----
-
-## 🖼️ Application Showcase
-
-| **Interactive Analytics Dashboard** | **AI Match Predictor & SHAP Explainability** |
-|:---:|:---:|
-| ![Dashboard Preview](docs/assets/dashboard.png) | ![Predictor Preview](docs/assets/predictor.png) |
-| *Real-time Premier League fixtures, recent scores, standings, and team form* | *Match outcome probabilities with SHAP feature-level explanation bars* |
-
-| **Team Performance Breakdown** | **ML Model Benchmark & Analytics** |
-|:---:|:---:|
-| ![Team Details Preview](docs/assets/team-details.png) | ![Analytics Preview](docs/assets/analytics.png) |
-| *Form trends, goals scored/conceded, attack/defense radar metrics* | *Multi-model evaluation (LR, RF, XGBoost), ROC curves, and log loss* |
 
 ---
 
 ## 🏗️ Architecture
 
-![MatchIQ System Architecture](docs/assets/architecture-diagram.svg)
-
 ```
 matchiq/
 ├── backend/                   # FastAPI REST API
 │   ├── app/
-│   │   ├── api/               # Route handlers (teams, matches, leagues, predictions, analytics)
-│   │   ├── core/              # Config, logging
+│   │   ├── api/               # Route handlers (teams, matches, leagues, predictions, health/provenance)
+│   │   ├── core/              # Config (DATA_MODE=real|demo), logging
 │   │   ├── db/                # SQLAlchemy session, base
 │   │   ├── ml/                # Model loader (singleton), SHAP explainer
 │   │   ├── models/            # ORM models (SQLAlchemy 2.0)
 │   │   ├── schemas/           # Pydantic v2 response schemas
 │   │   └── services/          # Business logic (PredictionService, FeatureBuilder)
-│   └── tests/                 # pytest suite (26 tests, SQLite isolation)
+│   └── tests/                 # pytest suite (32 tests: API, feature parity, real fixtures)
 │
 ├── ml/                        # ML pipeline (standalone, runnable without API)
-│   ├── features/              # Feature engineering (anti-leakage rolling windows)
-│   └── training/              # train.py — LR, RF, XGBoost comparison + selection
+│   ├── features/              # Feature engineering (dynamic pre-match standings, anti-leakage rolling windows)
+│   ├── models/                # Trained artifacts: best_model.joblib, training_manifest.json, metrics.json
+│   └── training/              # train.py — Candidate model comparison + chronological evaluation
 │
 ├── frontend/                  # React + TypeScript SPA
 │   ├── src/
 │   │   ├── components/        # Layout, TeamSelector, PredictionCard, UI primitives
 │   │   ├── pages/             # Dashboard, Predict, Teams, TeamDetail, Matches, Analytics
-│   │   ├── test/              # Vitest + React Testing Library suite (7 tests)
-│   │   ├── services/          # api.ts — typed HTTP client
+│   │   ├── test/              # Vitest + React Testing Library suite
+│   │   ├── services/          # api.ts — typed HTTP client with provenance support
 │   │   └── types/             # TypeScript interfaces matching API schemas
-│
+│   │
 ├── scripts/
-│   ├── fetch_real_data.py     # Authentic historical PL data fetcher (football-data.co.uk)
-│   └── seed_demo_data.py      # Offline synthetic demo data generator
+│   ├── fetch_real_data.py     # Authentic historical PL data fetcher (football-data.co.uk) + SHA-256 provenance
+│   ├── seed_demo_data.py      # Offline synthetic demo data generator (clearly marked as simulated)
+│   ├── bootstrap.py           # Auto-boot initialization respecting DATA_MODE
+│   └── e2e_functional_test.py # End-to-end integration benchmark
 │
 └── data/
-    └── processed/             # Cleaned historical dataset CSV
+    ├── raw/                   # Cached authentic CSV archives
+    └── processed/             # matches_processed.csv (1,140 rows) & provenance.json
 ```
 
 ---
@@ -99,7 +88,7 @@ docker compose up --build
 
 ### Option B — Local Development
 
-**Prerequisites:** Python 3.11+, Node.js 20+, PostgreSQL 14+
+**Prerequisites:** Python 3.11+, Node.js 20+
 
 ```bash
 git clone https://github.com/DevPranavJad700/matchiq.git
@@ -110,8 +99,8 @@ cp .env.example .env
 **Backend & Data & ML:**
 ```bash
 pip install -r backend/requirements.txt
-python scripts/fetch_real_data.py     # Fetch 1,140 real Premier League matches (2021-2024)
-python -m ml.training.train           # Train the ML model
+python scripts/fetch_real_data.py     # Download 1,140 authentic Premier League matches (2021-2024)
+python -m ml.training.train           # Train the ML model and generate training manifest
 uvicorn app.main:app --reload --app-dir backend  # Start API at http://localhost:8000
 ```
 
@@ -129,44 +118,49 @@ npm run dev          # Starts at http://localhost:5173
 
 ### Feature Engineering (Anti-Leakage Design)
 
-All 39 features use `.shift(1)` — **only information available before the match is used**. This prevents data leakage that would inflate test accuracy.
+All 39 features use strict temporal anti-leakage with `.shift(1)`:
+- **Dynamic Pre-Match Season Standings:** Pre-match league positions (1st–20th) and points in the current season are calculated dynamically from matches played strictly before the kickoff date.
+- **Form Metrics:** Rolling 5-match points, wins, draws, losses, and goal difference.
+- **Attack/Defence Strength:** Rolling 10-match goals scored, goals conceded, shots, shots on target, and estimated xG proxy.
+- **Venue & H2H:** Historical home/away win rates and last 5 head-to-head encounters.
 
 ### Model Training & Selection (Verified Source-of-Truth Metrics)
 
-Models are evaluated on Premier League matches with a strict chronological 70/15/15 split. Candidate selection is performed on the **Validation** set, with final retrained evaluation on the untouched **Test** set (see [Model Card](docs/MODEL_CARD.md)):
+Models are evaluated on 1,140 authentic Premier League matches with a strict chronological 70/15/15 split. Candidate selection is performed on the **Validation** set, with final retrained evaluation on the untouched **Test** set (see [ML Analysis](docs/ml-model-analysis.md)):
 
 ```
-Model                  Accuracy   Weighted F1   Log Loss   Brier Score  Selection
-Naive Majority Class   46.47%     0.2952        1.0986     0.6802       Baseline
-XGBoost                45.29%     0.4363        1.2054     0.7468       Candidate
-Random Forest          49.41%     0.4769        1.0354     0.6235       Candidate
-Logistic Regression    50.00%     0.4780        0.9946     0.5952       ← Selected Winner
+Model                  Validation Acc  Validation F1  Validation LogLoss  Validation Brier  Status
+Naive Majority Class   47.95%          0.3106         1.0986              0.6802            Baseline
+Logistic Regression    45.03%          0.4652         1.0524              0.6287            Candidate
+Random Forest          49.12%          0.4870         1.0190              0.6077            Runner-up
+XGBoost Classifier     57.89%          0.5479         1.0060              0.5899            ← Selected Winner
 ```
 
-> **Why Logistic Regression was selected:** Candidate models were selected on the Validation set based on a composite score combining weighted F1 and Log Loss calibration. Retrained on Train + Validation and evaluated on the untouched Test set, Logistic Regression achieved **50.00% Accuracy**, **0.4780 Weighted F1**, **0.9946 Log Loss**, and a **0.5952 Brier Score**, maintaining balanced recall across outcomes (`HOME_WIN` F1: 0.69, `AWAY_WIN` F1: 0.38, `DRAW` F1: 0.23).
+**Final Evaluation on Untouched Chronological Test Set (XGBoost):**
+* **Test Accuracy:** **56.73%**
+* **Test Weighted F1:** **0.5021**
+* **Test Log Loss:** **0.9435**
+* **Test Brier Score:** **0.5508**
 
 ---
 
 ## 🧪 Testing
 
 ```bash
-# Backend — 29 Pytest cases (SQLite isolated)
+# Backend — 32 Pytest cases (API endpoints, feature parity, real fixture regression)
 cd backend
 python -m pytest tests/ -v
+
+# Functional E2E & Latency Benchmark
+python scripts/e2e_functional_test.py
+
+# Audit Verification
+python audit_script.py
 
 # Frontend — 7 Vitest + React Testing Library cases
 cd frontend
 npm run test
 ```
-
----
-
-## 📚 Interview & Architecture Documentation
-
-* 🎴 [Model Card (docs/MODEL_CARD.md)](docs/MODEL_CARD.md) — Comprehensive model architecture, validation methodology, and per-class calibration metrics.
-* 📘 [Interview Guide (docs/interview-guide.md)](docs/interview-guide.md) — 14 technical Q&As covering architecture, Postgres, anti-leakage, SHAP XAI, and scaling.
-* 📊 [ML Model & Calibration Analysis (docs/ml-model-analysis.md)](docs/ml-model-analysis.md) — Deep dive into baselines, class distributions, and composite metrics.
-* 🚀 [Live Deployment Guide (docs/deployment-guide.md)](docs/deployment-guide.md) — Production setup for Render, Vercel, and Supabase.
 
 ---
 
@@ -178,10 +172,10 @@ MatchIQ is an open-source machine learning portfolio and data engineering projec
 
 ## 🛠️ Tech Stack Summary
 
-**Backend:** FastAPI · SQLAlchemy 2.0 · Alembic · Pydantic v2 · PostgreSQL · psycopg2
+**Backend:** FastAPI · SQLAlchemy 2.0 · Alembic · Pydantic v2 · PostgreSQL / SQLite · psycopg2
 
 **ML & XAI:** scikit-learn · XGBoost · SHAP · pandas · numpy · joblib
 
-**Frontend:** React 19 · TypeScript · Vite · Vitest · TanStack Query · Recharts · Tailwind CSS v4 · Lucide Icons
+**Frontend:** React 19 · TypeScript · Vite · Vitest · TanStack Query · Recharts · Tailwind CSS · Lucide Icons
 
 **DevOps:** Docker · Docker Compose · GitHub Actions · Nginx · uvicorn

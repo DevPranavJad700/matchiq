@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Zap, ChevronRight } from 'lucide-react';
+import { Zap, ChevronRight, CheckCircle2, ShieldCheck, Database } from 'lucide-react';
 import api from '../services/api';
 import { StatCard, ErrorBanner, Badge } from '../components/ui';
 import { MatchCard } from '../components/PredictionCard';
@@ -11,6 +11,12 @@ export function Dashboard() {
     queryKey: ['health'],
     queryFn: () => api.getHealth(),
     refetchInterval: 30_000,
+  });
+
+  const { data: provenance } = useQuery({
+    queryKey: ['provenance'],
+    queryFn: () => api.getProvenance(),
+    staleTime: 60 * 60 * 1000,
   });
 
   const { data: teams } = useQuery({
@@ -34,19 +40,28 @@ export function Dashboard() {
     queryFn: () => api.getModelInfo(),
   });
 
+  const latestPrediction = predictions && predictions.length > 0 ? predictions[0] : null;
+
   return (
     <div className="space-y-10 animate-fade-in">
       {/* Editorial Hero */}
       <div className="py-8 border-b border-[var(--border)] flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="max-w-xl">
-          <span className="text-[#54C878] text-xs font-bold uppercase tracking-wider">MatchIQ</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[#54C878] text-xs font-bold uppercase tracking-wider">MatchIQ</span>
+            {provenance?.is_authentic && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#54C878] bg-[#14291D] border border-[#234A33] px-2 py-0.5 rounded">
+                <ShieldCheck size={12} /> Verified Data
+              </span>
+            )}
+          </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#F4F5F2] mt-1 leading-tight">
             Football intelligence, without the noise.
           </h1>
           <p className="text-[#9DA4AA] mt-2 text-base leading-relaxed">
             Predict Premier League match outcomes using historical performance metrics, rolling feature averages, and machine learning.
           </p>
-          <div className="mt-5">
+          <div className="mt-5 flex items-center gap-3">
             <Link
               to="/predict"
               id="hero-predict-cta"
@@ -55,27 +70,71 @@ export function Dashboard() {
               <Zap size={16} />
               Predict a Match
             </Link>
+            <Link
+              to="/matches"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-[var(--border)] text-sm font-semibold text-[#9DA4AA] hover:text-[#F4F5F2] bg-[#171B1F] transition-colors"
+            >
+              <Database size={15} />
+              Explore Matches
+            </Link>
           </div>
         </div>
 
-        {/* Live Preview Card */}
+        {/* Dynamic Prediction Preview / Latest Prediction */}
         <div className="glass-card p-4 max-w-xs w-full shrink-0 border border-[var(--border-strong)]">
-          <div className="flex items-center justify-between text-xs text-[#5C636A] font-semibold mb-3">
-            <span>PREDICTION PREVIEW</span>
-            <span className="text-[#54C878]">60.8% Win Prob</span>
-          </div>
-          <div className="flex items-center justify-between py-1">
-            <span className="text-sm font-semibold text-[#F4F5F2]">Arsenal FC</span>
-            <span className="text-xs font-bold text-[#54C878]">60.8%</span>
-          </div>
-          <div className="flex items-center justify-between py-1 text-xs text-[#9DA4AA]">
-            <span>Draw</span>
-            <span>19.8%</span>
-          </div>
-          <div className="flex items-center justify-between py-1 text-xs text-[#9DA4AA]">
-            <span>Chelsea FC</span>
-            <span>19.4%</span>
-          </div>
+          {latestPrediction ? (
+            <>
+              <div className="flex items-center justify-between text-xs text-[#5C636A] font-semibold mb-3">
+                <span>LATEST PREDICTION</span>
+                <span className="text-[#54C878] font-bold">
+                  {Math.round(
+                    Math.max(
+                      latestPrediction.home_win_probability,
+                      latestPrediction.draw_probability,
+                      latestPrediction.away_win_probability
+                    ) * 100
+                  )}% Confidence
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-sm font-semibold text-[#F4F5F2] truncate max-w-[140px]">
+                  {latestPrediction.home_team.name}
+                </span>
+                <span className="text-xs font-bold text-[#54C878]">
+                  {(latestPrediction.home_win_probability * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1 text-xs text-[#9DA4AA]">
+                <span>Draw</span>
+                <span>{(latestPrediction.draw_probability * 100).toFixed(1)}%</span>
+              </div>
+              <div className="flex items-center justify-between py-1 text-xs text-[#9DA4AA]">
+                <span className="truncate max-w-[140px]">{latestPrediction.away_team.name}</span>
+                <span>{(latestPrediction.away_win_probability * 100).toFixed(1)}%</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between text-xs text-[#5C636A] font-semibold mb-3">
+                <span>MODEL STATUS</span>
+                <span className="text-[#54C878] flex items-center gap-1 font-bold">
+                  <CheckCircle2 size={12} /> Ready
+                </span>
+              </div>
+              <div className="space-y-1.5 text-xs text-[#9DA4AA]">
+                <p className="text-sm font-semibold text-[#F4F5F2]">
+                  {modelInfo?.algorithm ? modelInfo.algorithm.toUpperCase() : 'ML Engine'}
+                </p>
+                <p>39 time-aware features with anti-leakage rolling windows.</p>
+                <Link
+                  to="/predict"
+                  className="inline-flex items-center gap-1 text-xs text-[#54C878] font-bold pt-1 hover:underline"
+                >
+                  Generate prediction <ChevronRight size={12} />
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -94,26 +153,54 @@ export function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
           label="Premier League Teams"
-          value={teams?.length ?? '20'}
-          sub="Official 2023-24 Season"
+          value={teams?.length ? String(teams.length) : provenance ? String(provenance.total_teams) : '28'}
+          sub={provenance ? `${provenance.seasons[0]} – ${provenance.seasons[provenance.seasons.length - 1]}` : '2018–2024 (6 Seasons)'}
         />
         <StatCard
           label="Total Matches"
-          value={matches?.total ?? '1,140'}
+          value={matches?.total ? matches.total.toLocaleString() : provenance ? provenance.total_matches.toLocaleString() : '2,280'}
           sub="Historical Match Dataset"
         />
         <StatCard
           label="Model Accuracy"
-          value={modelInfo?.accuracy ? `${(modelInfo.accuracy * 100).toFixed(1)}%` : '58.2%'}
-          sub="Logistic Regression / XGBoost"
+          value={modelInfo?.accuracy ? `${(modelInfo.accuracy * 100).toFixed(1)}%` : '50.6%'}
+          sub={modelInfo?.algorithm ? `${modelInfo.algorithm.replace('_', ' ').toUpperCase()} (Test Set)` : 'ML Classification'}
           accent="green"
         />
         <StatCard
           label="Predictions Generated"
-          value={predictions?.length ?? 0}
+          value={predictions?.length !== undefined ? String(predictions.length) : '0'}
           sub="Live Inference Queries"
         />
       </div>
+
+      {/* Provenance Card */}
+      {provenance && (
+        <div className="glass-card p-4 border border-[var(--border)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-[#14291D] border border-[#234A33] flex items-center justify-center text-[#54C878] shrink-0">
+              <ShieldCheck size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-[#F4F5F2]">{provenance.dataset_name}</h3>
+                <span className="text-[10px] font-mono font-bold bg-[#171B1F] text-[#9DA4AA] px-1.5 py-0.5 rounded border border-[var(--border)]">
+                  SHA-256: {provenance.sha256.slice(0, 12)}...
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-[#14291D] text-[#54C878] px-1.5 py-0.5 rounded border border-[#234A33]">
+                  Mode: {health?.data_mode || 'real'}
+                </span>
+              </div>
+              <p className="text-xs text-[#9DA4AA] mt-0.5">
+                Data source: <span className="text-[#F4F5F2] font-medium">football-data.co.uk</span> • {provenance.total_matches.toLocaleString()} matches across {provenance.total_teams} clubs ({provenance.seasons[0]} to {provenance.seasons[provenance.seasons.length - 1]})
+              </p>
+            </div>
+          </div>
+          <div className="text-xs text-[#5C636A] shrink-0 text-right">
+            <span>xG: {provenance.xg_methodology}</span>
+          </div>
+        </div>
+      )}
 
       {/* Recent Predictions & Matches Grid */}
       <div className="grid lg:grid-cols-2 gap-8">

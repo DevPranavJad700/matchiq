@@ -4,23 +4,26 @@ This module computes all features from processed match data.
 
 ANTI-LEAKAGE GUARANTEE:
 ========================
-All rolling features use `.shift(1)` before computing windows. This means
-for match N, only matches 1..N-1 are used. The feature captures what was
-known BEFORE the match kicked off.
+All rolling features use `.shift(1)` before computing windows.
+All league standings, points, and table positions are computed dynamically
+per season from matches played strictly BEFORE the kickoff of each match.
+This means for match N, only matches 1..N-1 are used. The feature captures
+what was known BEFORE the match kicked off.
 
 Feature categories:
-- Team form (last 5 and 10 matches)
-- Attack strength (rolling average goals scored)
-- Defence strength (rolling average goals conceded)
-- Shot metrics
-- xG (where available)
-- Home/away venue performance
-- League position at time of match
-- Head-to-head history
+- Team form (last 5 matches: pts, wins, draws, losses, gd)
+- Attack strength (rolling 10-match average goals scored)
+- Defence strength (rolling 10-match average goals conceded)
+- Shot metrics (rolling 10-match average shots, shots on target)
+- Estimated xG proxy (rolling 10-match average)
+- Home/away venue performance (win rate, goals scored average)
+- Pre-match league position and points in current season
+- Head-to-head history (last 5 meetings)
 - Difference features (home - away)
 """
 
 import logging
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -115,11 +118,11 @@ def _rolling_team_features(df: pd.DataFrame, team_id: int) -> pd.DataFrame:
             sot = row.get("away_sot", np.nan)
             xg = row.get("away_xg", np.nan)
 
-        pts = _compute_points_from_result(result, is_home)
+        pts = _compute_points_from_result(result, is_home) if pd.notna(result) else 0
         win = 1 if pts == 3 else 0
         draw = 1 if pts == 1 else 0
-        loss = 1 if pts == 0 else 0
-        gd = (goals or 0) - (goals_conceded or 0)
+        loss = 1 if (pts == 0 and pd.notna(result)) else 0
+        gd = ((goals or 0) - (goals_conceded or 0)) if pd.notna(goals) else 0
 
         records.append({
             "match_id": row["match_id"],
@@ -158,7 +161,6 @@ def _rolling_team_features(df: pd.DataFrame, team_id: int) -> pd.DataFrame:
     tdf["avg_shots"] = rolling_mean("shots", 10)
     tdf["avg_shots_on_target"] = rolling_mean("sot", 10)
     tdf["avg_xg"] = rolling_mean("xg", 10)
-    tdf["cum_pts"] = tdf["pts"].shift(1).expanding().sum().fillna(0.0)
 
     # Venue-specific features
     home_df = tdf[tdf["is_home"] == True].copy()  # noqa: E712
@@ -200,6 +202,7 @@ def _compute_h2h_features(df: pd.DataFrame) -> pd.DataFrame:
                 | ((df["home_team_id"] == at) & (df["away_team_id"] == ht))
             )
             & (df["match_date"] < date)
+            & (df["result"].notna())
         ].sort_values("match_date").tail(5)
 
         hw = dw = aw = 0
@@ -237,6 +240,93 @@ def _compute_h2h_features(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(h2h_records).set_index("match_id")
 
 
+def _compute_dynamic_season_standings(df: pd.DataFrame) -> dict[int, dict]:
+    """Compute pre-match league standings dynamically per season with strict zero-leakage.
+
+    For every match in chronological sequence:
+    1. Look at prior completed matches within the same season.
+    2. Rank teams by points (descending), goal difference (descending), and goals scored (descending).
+    3. Output pre-match points and league position (1 to 20).
+    """
+    df_sorted = df.sort_values("match_date").copy()
+    standings_by_match = {}
+
+    # Group by season if present, otherwise treat as single timeline
+    seasons = df_sorted["season"].unique() if "season" in df_sorted.columns else ["all"]
+
+    for season in seasons:
+        season_df = df_sorted[df_sorted["season"] == season] if "season" in df_sorted.columns else df_sorted
+        all_season_teams = sorted(list(set(season_df["home_team_id"].unique()) | set(season_df["away_team_id"].unique())))
+
+        # Table tracker: team_id -> {played, won, drawn, lost, gf, ga, gd, pts}
+        table = {
+            tid: {"played": 0, "won": 0, "drawn": 0, "lost": 0, "gf": 0, "ga": 0, "gd": 0, "pts": 0}
+            for tid in all_season_teams
+        }
+
+        for _, match in season_df.iterrows():
+            mid = match["match_id"]
+            ht = match["home_team_id"]
+            at = match["away_team_id"]
+
+            # Pre-match positions (rank 1 to N)
+            active_teams = [tid for tid, s in table.items() if s["played"] > 0]
+            if active_teams:
+                # Rank teams with at least 1 match played
+                sorted_teams = sorted(
+                    all_season_teams,
+                    key=lambda t: (-table[t]["pts"], -table[t]["gd"], -table[t]["gf"], t)
+                )
+                pos_map = {t: idx + 1 for idx, t in enumerate(sorted_teams)}
+                home_pos = float(pos_map.get(ht, 10.0))
+                away_pos = float(pos_map.get(at, 10.0))
+            else:
+                home_pos = 10.0
+                away_pos = 10.0
+
+            home_pts = float(table[ht]["pts"])
+            away_pts = float(table[at]["pts"])
+
+            standings_by_match[mid] = {
+                "home_league_position": home_pos,
+                "home_points": home_pts,
+                "away_league_position": away_pos,
+                "away_points": away_pts,
+            }
+
+            # Update table AFTER match if result is recorded (shift 1)
+            res = match.get("result")
+            if pd.notna(res) and res in ["H", "D", "A"]:
+                hg = int(match.get("home_goals", 0) or 0)
+                ag = int(match.get("away_goals", 0) or 0)
+
+                table[ht]["played"] += 1
+                table[ht]["gf"] += hg
+                table[ht]["ga"] += ag
+                table[ht]["gd"] = table[ht]["gf"] - table[ht]["ga"]
+
+                table[at]["played"] += 1
+                table[at]["gf"] += ag
+                table[at]["ga"] += hg
+                table[at]["gd"] = table[at]["gf"] - table[at]["ga"]
+
+                if res == "H":
+                    table[ht]["won"] += 1
+                    table[ht]["pts"] += 3
+                    table[at]["lost"] += 1
+                elif res == "A":
+                    table[at]["won"] += 1
+                    table[at]["pts"] += 3
+                    table[ht]["lost"] += 1
+                else:
+                    table[ht]["drawn"] += 1
+                    table[ht]["pts"] += 1
+                    table[at]["drawn"] += 1
+                    table[at]["pts"] += 1
+
+    return standings_by_match
+
+
 def compute_features(df: pd.DataFrame, standings: pd.DataFrame | None = None) -> pd.DataFrame:
     """Main feature engineering pipeline.
 
@@ -244,12 +334,12 @@ def compute_features(df: pd.DataFrame, standings: pd.DataFrame | None = None) ->
         df: Match DataFrame with columns:
             match_id, match_date, home_team_id, away_team_id, result,
             home_goals, away_goals, [home_shots, away_shots, home_sot,
-            away_sot, home_xg, away_xg]
-        standings: Optional standings DataFrame with columns:
-            team_id, season_id, match_id (or match_date cutoff), position, points
+            away_sot, home_xg, away_xg, season]
+        standings: Optional explicit standings DataFrame. If not provided,
+            standings are dynamically computed per season with zero leakage.
 
     Returns:
-        Feature DataFrame with one row per match, ready for ML training.
+        Feature DataFrame with one row per match, ready for ML training/inference.
     """
     logger.info(f"Engineering features for {len(df)} matches")
     df = df.copy().sort_values("match_date").reset_index(drop=True)
@@ -266,6 +356,10 @@ def compute_features(df: pd.DataFrame, standings: pd.DataFrame | None = None) ->
     logger.info("Computing H2H features...")
     h2h_df = _compute_h2h_features(df)
 
+    # Pre-match season standings
+    logger.info("Computing dynamic per-season pre-match standings...")
+    dynamic_standings = _compute_dynamic_season_standings(df)
+
     # Assemble match-level feature frame
     feature_rows = []
     for _, match in df.iterrows():
@@ -279,16 +373,21 @@ def compute_features(df: pd.DataFrame, standings: pd.DataFrame | None = None) ->
         def get_feat(feat_df, feat_name, default=0.0):
             if feat_df.empty or mid not in feat_df.index:
                 return default
-            return feat_df.loc[mid, feat_name] if feat_name in feat_df.columns else default
+            val = feat_df.loc[mid, feat_name] if feat_name in feat_df.columns else default
+            return default if pd.isna(val) else val
 
-        # Home/Away standings & points features
-        home_pos = 10.0
-        home_pts = get_feat(hf, "cum_pts", 0.0)
-        away_pos = 10.0
-        away_pts = get_feat(af, "cum_pts", 0.0)
+        # Standings & points
+        st_data = dynamic_standings.get(mid, {
+            "home_league_position": 10.0, "home_points": 0.0,
+            "away_league_position": 10.0, "away_points": 0.0,
+        })
+        home_pos = st_data["home_league_position"]
+        home_pts = st_data["home_points"]
+        away_pos = st_data["away_league_position"]
+        away_pts = st_data["away_points"]
 
         if standings is not None:
-            # Get standing that was valid before this match date
+            # If explicit standings override was supplied
             home_stand = standings[
                 (standings["team_id"] == ht) & (standings["match_date"] <= match["match_date"])
             ].sort_values("match_date").tail(1)
@@ -311,7 +410,7 @@ def compute_features(df: pd.DataFrame, standings: pd.DataFrame | None = None) ->
             "match_date": match["match_date"],
             "home_team_id": ht,
             "away_team_id": at,
-            "result": match["result"],
+            "result": match.get("result"),
             # Home features
             "home_form_pts_last5": get_feat(hf, "form_pts_last5"),
             "home_form_wins_last5": get_feat(hf, "form_wins_last5"),
@@ -370,7 +469,8 @@ def compute_features(df: pd.DataFrame, standings: pd.DataFrame | None = None) ->
     features_df = pd.DataFrame(feature_rows)
 
     # Target encoding
-    features_df["target"] = features_df["result"].map(RESULT_MAP)
+    if "result" in features_df.columns:
+        features_df["target"] = features_df["result"].map(RESULT_MAP)
 
     # Fill remaining NaNs with 0 (early-season matches with no history)
     features_df[FEATURE_NAMES] = features_df[FEATURE_NAMES].fillna(0.0)

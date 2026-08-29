@@ -1,9 +1,10 @@
 """Auto-boot initialization script for MatchIQ.
 
 Ensures that:
-1. Database schema is populated with seed data if empty.
-2. ML model artifacts exist and are trained if missing.
-3. Active model version is registered in the database.
+1. Database schema is populated with authentic match data (or demo data if explicitly DATA_MODE=demo).
+2. Real data mode fails visibly if download/ingestion fails (no silent synthetic fallback).
+3. ML model artifacts exist and are trained.
+4. Active model version is registered in the database.
 """
 
 import logging
@@ -22,14 +23,17 @@ logger = logging.getLogger(__name__)
 
 def bootstrap() -> None:
     """Run application bootstrap tasks."""
+    data_mode = os.getenv("DATA_MODE", "real").lower()
+
     logger.info("==================================================")
     logger.info("MatchIQ Application Bootstrap Sequence")
+    logger.info(f"DATA_MODE: {data_mode.upper()}")
     logger.info("==================================================")
 
     # 1. Check and seed database if empty
     try:
         from app.db.session import SessionLocal
-        from app.models.orm_models import Team, ModelVersion
+        from app.models.orm_models import Team
         from sqlalchemy import select
 
         db = SessionLocal()
@@ -37,27 +41,35 @@ def bootstrap() -> None:
         db.close()
 
         if team_count == 0:
-            logger.info("Database is empty. Ingesting authentic Premier League match data...")
-            try:
-                from scripts.fetch_real_data import parse_and_clean_matches, save_dataset, seed_real_data_to_db, generate_fallback_data
+            if data_mode == "demo":
+                logger.info("[DEMO MODE] Seeding simulated demo data into database...")
+                from scripts.seed_demo_data import seed_to_db
+                seed_to_db(reset=True)
+            else:
+                logger.info("Database is empty. Ingesting real Premier League data...")
+                from scripts.fetch_real_data import (
+                    parse_and_clean_matches,
+                    save_dataset_and_provenance,
+                    seed_real_data_to_db,
+                )
                 df = parse_and_clean_matches()
                 if df.empty:
-                    df = generate_fallback_data()
-                save_dataset(df)
+                    raise RuntimeError(
+                        "Real data download failed. The application will not seed synthetic data."
+                    )
+                save_dataset_and_provenance(df)
                 seed_real_data_to_db(df)
-            except Exception as err:
-                logger.warning(f"Real data ingestion encountered warning: {err}. Running demo seeder fallback...")
-                from scripts.seed_demo_data import seed_to_db
-                seed_to_db(reset=False)
         else:
-            logger.info(f"Database contains {team_count} teams. Skipping seed.")
-    except Exception as e:
-        logger.warning(f"Database check/seed warning: {e}")
+            logger.info(f"Database contains {team_count} teams. Skipping initial seed.")
+    except Exception:
+        logger.exception("Database bootstrap failed")
+        raise
 
     # 2. Check ML model artifacts
     model_file = project_root / "ml" / "models" / "best_model.joblib"
-    if not model_file.exists():
-        logger.info("No model artifact found. Initiating ML training pipeline...")
+    manifest_file = project_root / "ml" / "models" / "training_manifest.json"
+    if not model_file.exists() or not manifest_file.exists():
+        logger.info("Model artifact or training manifest missing. Initiating ML training pipeline...")
         from ml.training.train import train
         train()
     else:
@@ -82,10 +94,10 @@ def bootstrap() -> None:
                 mv = ModelVersion(
                     name=meta.get("name", "MatchIQ Model"),
                     version_tag=meta.get("version_tag", "v1.0.0"),
-                    algorithm=meta.get("algorithm", "logistic_regression"),
-                    accuracy=meta.get("accuracy", 0.48),
-                    f1_score=meta.get("f1_score", 0.43),
-                    log_loss=meta.get("log_loss", 0.99),
+                    algorithm=meta.get("algorithm", "xgboost"),
+                    accuracy=meta.get("accuracy", 0.55),
+                    f1_score=meta.get("f1_score", 0.50),
+                    log_loss=meta.get("log_loss", 0.95),
                     features_json=json.dumps(meta.get("features", [])),
                     is_active=True,
                 )

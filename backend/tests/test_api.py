@@ -133,10 +133,21 @@ class TestHealth:
         assert "version" in data
         assert "db_connected" in data
         assert "model_loaded" in data
+        assert "data_mode" in data
 
     def test_health_db_connected(self, client):
         data = client.get("/health").json()
         assert data["db_connected"] is True
+
+    def test_provenance_endpoint(self, client):
+        response = client.get("/system/provenance")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["is_authentic"] is True
+        assert data["total_matches"] == 2280
+        assert data["total_teams"] == 28
+        assert "sha256" in data
+        assert "first_match" in data
 
 
 # ─── Teams Tests ───────────────────────────────────────────────────────────────

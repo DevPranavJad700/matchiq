@@ -24,11 +24,12 @@ coverage.xml
 .env.local
 .env.*.local
 
-# ML models (tracked separately via DVC or artifacts)
-ml/models/*.joblib
+# ML models and manifests
 ml/models/*.pkl
-# Keep the metadata JSON in git
+!ml/models/best_model.joblib
 !ml/models/feature_metadata.json
+!ml/models/metrics.json
+!ml/models/training_manifest.json
 !ml/models/.gitkeep
 
 # Data (raw CSVs can be large)

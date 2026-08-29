@@ -1,0 +1,292 @@
+{
+  "manifest_version": "1.0.0",
+  "model_name": "MatchIQ Match Predictor",
+  "version_tag": "random_forest-v20260829",
+  "algorithm": "random_forest",
+  "training_timestamp": "2026-08-29T06:37:44.305138+00:00",
+  "git_commit": "04688dc041d7e01e9e87137c08948304918323d9",
+  "reproducibility": {
+    "random_seed": 42,
+    "python_version": "3.13.3",
+    "scikit_learn_version": "1.8.0",
+    "xgboost_version": "3.4.1",
+    "numpy_version": "2.4.4",
+    "pandas_version": "3.0.5",
+    "joblib_version": "1.5.3"
+  },
+  "dataset": {
+    "source": "football-data.co.uk authentic Premier League matches (2018-2024)",
+    "sha256": "6dbfbaf8eccecadb7dce4aa994825d5c2d058dcd29e46e67e4a43f45bc8387dd",
+    "total_matches": 2280,
+    "split": {
+      "train_count": 1596,
+      "train_seasons": [],
+      "train_start": "2018-08-10 15:00:00+00:00",
+      "train_end": "2022-10-02 16:30:00+00:00",
+      "val_count": 342,
+      "val_seasons": [],
+      "val_start": "2022-10-03 20:00:00+00:00",
+      "val_end": "2023-09-03 14:00:00+00:00",
+      "test_count": 342,
+      "test_seasons": [],
+      "test_start": "2023-09-03 16:30:00+00:00",
+      "test_end": "2024-05-19 16:00:00+00:00"
+    }
+  },
+  "baseline_comparison": {
+    "naive_majority_accuracy": 0.4649,
+    "naive_majority_f1": 0.2951,
+    "naive_majority_log_loss": 1.0532,
+    "naive_majority_brier_score": 0.6362,
+    "model_accuracy": 0.5058,
+    "model_f1": 0.5032,
+    "model_log_loss": 0.9832,
+    "model_brier_score": 0.5835
+  },
+  "evaluation": {
+    "test_accuracy": 0.5058,
+    "test_f1_score": 0.5032,
+    "test_log_loss": 0.9832,
+    "test_brier_score": 0.5835,
+    "classification_report": {
+      "HOME_WIN": {
+        "precision": 0.6590909090909091,
+        "recall": 0.5471698113207547,
+        "f1-score": 0.5979381443298969,
+        "support": 159.0
+      },
+      "DRAW": {
+        "precision": 0.24242424242424243,
+        "recall": 0.21333333333333335,
+        "f1-score": 0.22695035460992907,
+        "support": 75.0
+      },
+      "AWAY_WIN": {
+        "precision": 0.4861111111111111,
+        "recall": 0.6481481481481481,
+        "f1-score": 0.5555555555555556,
+        "support": 108.0
+      },
+      "accuracy": 0.5058479532163743,
+      "macro avg": {
+        "precision": 0.46254208754208753,
+        "recall": 0.4695504309340787,
+        "f1-score": 0.4601480181651272,
+        "support": 342.0
+      },
+      "weighted avg": {
+        "precision": 0.5130914407230197,
+        "recall": 0.5058479532163743,
+        "f1-score": 0.5031971974976558,
+        "support": 342.0
+      }
+    },
+    "candidate_validation_results": [
+      {
+        "name": "logistic_regression",
+        "accuracy": 0.4415,
+        "f1_score": 0.4645,
+        "log_loss": 1.0473,
+        "brier_score": 0.6281,
+        "classification_report": {
+          "HOME_WIN": {
+            "precision": 0.675,
+            "recall": 0.49390243902439024,
+            "f1-score": 0.5704225352112676,
+            "support": 164.0
+          },
+          "DRAW": {
+            "precision": 0.1724137931034483,
+            "recall": 0.2777777777777778,
+            "f1-score": 0.2127659574468085,
+            "support": 72.0
+          },
+          "AWAY_WIN": {
+            "precision": 0.4716981132075472,
+            "recall": 0.4716981132075472,
+            "f1-score": 0.4716981132075472,
+            "support": 106.0
+          },
+          "accuracy": 0.4415204678362573,
+          "macro avg": {
+            "precision": 0.43970396877033185,
+            "recall": 0.41445944333657175,
+            "f1-score": 0.41829553528854113,
+            "support": 342.0
+          },
+          "weighted avg": {
+            "precision": 0.5061806815890301,
+            "recall": 0.4415204678362573,
+            "f1-score": 0.4645276161135032,
+            "support": 342.0
+          }
+        }
+      },
+      {
+        "name": "random_forest",
+        "accuracy": 0.5088,
+        "f1_score": 0.5223,
+        "log_loss": 1.0125,
+        "brier_score": 0.6059,
+        "classification_report": {
+          "HOME_WIN": {
+            "precision": 0.6850393700787402,
+            "recall": 0.5304878048780488,
+            "f1-score": 0.5979381443298969,
+            "support": 164.0
+          },
+          "DRAW": {
+            "precision": 0.2692307692307692,
+            "recall": 0.3888888888888889,
+            "f1-score": 0.3181818181818182,
+            "support": 72.0
+          },
+          "AWAY_WIN": {
+            "precision": 0.5315315315315315,
+            "recall": 0.5566037735849056,
+            "f1-score": 0.543778801843318,
+            "support": 106.0
+          },
+          "accuracy": 0.5087719298245614,
+          "macro avg": {
+            "precision": 0.4952672236136803,
+            "recall": 0.4919934891172811,
+            "f1-score": 0.48663292145167764,
+            "support": 342.0
+          },
+          "weighted avg": {
+            "precision": 0.549922264385588,
+            "recall": 0.5087719298245614,
+            "f1-score": 0.5222558467093149,
+            "support": 342.0
+          }
+        }
+      },
+      {
+        "name": "xgboost",
+        "accuracy": 0.5088,
+        "f1_score": 0.463,
+        "log_loss": 1.0099,
+        "brier_score": 0.6014,
+        "classification_report": {
+          "HOME_WIN": {
+            "precision": 0.5918367346938775,
+            "recall": 0.7073170731707317,
+            "f1-score": 0.6444444444444445,
+            "support": 164.0
+          },
+          "DRAW": {
+            "precision": 0.06666666666666667,
+            "recall": 0.013888888888888888,
+            "f1-score": 0.022988505747126436,
+            "support": 72.0
+          },
+          "AWAY_WIN": {
+            "precision": 0.4351145038167939,
+            "recall": 0.5377358490566038,
+            "f1-score": 0.4810126582278481,
+            "support": 106.0
+          },
+          "accuracy": 0.5087719298245614,
+          "macro avg": {
+            "precision": 0.36453930172577936,
+            "recall": 0.4196472703720748,
+            "f1-score": 0.382815202806473,
+            "support": 342.0
+          },
+          "weighted avg": {
+            "precision": 0.43269988858004693,
+            "recall": 0.5087719298245614,
+            "f1-score": 0.4629573189322629,
+            "support": 342.0
+          }
+        }
+      }
+    ]
+  },
+  "features": {
+    "count": 39,
+    "names": [
+      "home_form_pts_last5",
+      "home_form_wins_last5",
+      "home_form_draws_last5",
+      "home_form_losses_last5",
+      "home_form_gd_last5",
+      "home_avg_goals_scored",
+      "home_avg_goals_conceded",
+      "home_avg_shots",
+      "home_avg_shots_on_target",
+      "home_avg_xg",
+      "home_home_win_rate",
+      "home_home_goals_avg",
+      "home_league_position",
+      "home_points",
+      "away_form_pts_last5",
+      "away_form_wins_last5",
+      "away_form_draws_last5",
+      "away_form_losses_last5",
+      "away_form_gd_last5",
+      "away_avg_goals_scored",
+      "away_avg_goals_conceded",
+      "away_avg_shots",
+      "away_avg_shots_on_target",
+      "away_avg_xg",
+      "away_away_win_rate",
+      "away_away_goals_avg",
+      "away_league_position",
+      "away_points",
+      "h2h_home_wins",
+      "h2h_away_wins",
+      "h2h_draws",
+      "h2h_home_goals_avg",
+      "h2h_away_goals_avg",
+      "form_diff",
+      "attack_diff",
+      "defence_diff",
+      "position_diff",
+      "points_diff",
+      "xg_diff"
+    ],
+    "importance": {
+      "home_form_pts_last5": 0.0129,
+      "home_form_wins_last5": 0.0035,
+      "home_form_draws_last5": 0.006,
+      "home_form_losses_last5": 0.0069,
+      "home_form_gd_last5": 0.0164,
+      "home_avg_goals_scored": 0.0223,
+      "home_avg_goals_conceded": 0.0137,
+      "home_avg_shots": 0.0326,
+      "home_avg_shots_on_target": 0.0274,
+      "home_avg_xg": 0.0347,
+      "home_home_win_rate": 0.048,
+      "home_home_goals_avg": 0.0647,
+      "home_league_position": 0.0225,
+      "home_points": 0.0225,
+      "away_form_pts_last5": 0.0103,
+      "away_form_wins_last5": 0.0048,
+      "away_form_draws_last5": 0.006,
+      "away_form_losses_last5": 0.0051,
+      "away_form_gd_last5": 0.017,
+      "away_avg_goals_scored": 0.0334,
+      "away_avg_goals_conceded": 0.0261,
+      "away_avg_shots": 0.0294,
+      "away_avg_shots_on_target": 0.0343,
+      "away_avg_xg": 0.041,
+      "away_away_win_rate": 0.0306,
+      "away_away_goals_avg": 0.032,
+      "away_league_position": 0.0218,
+      "away_points": 0.0203,
+      "h2h_home_wins": 0.0079,
+      "h2h_away_wins": 0.0084,
+      "h2h_draws": 0.0088,
+      "h2h_home_goals_avg": 0.0189,
+      "h2h_away_goals_avg": 0.0199,
+      "form_diff": 0.0202,
+      "attack_diff": 0.0491,
+      "defence_diff": 0.0246,
+      "position_diff": 0.0577,
+      "points_diff": 0.0511,
+      "xg_diff": 0.087
+    }
+  }
+}

@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "MatchIQ"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
+    DATA_MODE: str = "real"  # "real" | "demo"
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
@@ -23,6 +24,7 @@ class Settings(BaseSettings):
     MODEL_DIR: str = "ml/models"
     MODEL_FILENAME: str = "best_model.joblib"
     FEATURE_META_FILENAME: str = "feature_metadata.json"
+    PROVENANCE_PATH: str = "data/processed/provenance.json"
 
     # Logging
     LOG_LEVEL: str = "INFO"

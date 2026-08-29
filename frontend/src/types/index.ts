@@ -171,6 +171,25 @@ export interface Health {
   version: string;
   db_connected: boolean;
   model_loaded: boolean;
+  data_mode?: string;
+}
+
+export interface DatasetProvenance {
+  dataset_name: string;
+  source_urls: Record<string, string>;
+  retrieved_at: string;
+  sha256: string;
+  total_matches: number;
+  total_teams: number;
+  teams: string[];
+  seasons: string[];
+  season_match_counts: Record<string, number>;
+  date_range: { start: string; end: string };
+  first_match: { date: string; fixture: string; result: string };
+  last_match: { date: string; fixture: string; result: string };
+  is_authentic: boolean;
+  data_mode: string;
+  xg_methodology: string;
 }
 
 export interface LeagueTableRow {

@@ -5,6 +5,7 @@
  */
 
 import type {
+  DatasetProvenance,
   Health,
   League,
   LeagueAnalytics,
@@ -34,11 +35,12 @@ async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
   return response.json();
 }
 
-// ─── Health ────────────────────────────────────────────────────────────────────
+// ─── Health & System ──────────────────────────────────────────────────────────
 
 export const api = {
   getHealth: () => fetchJSON<Health>('/health'),
   getModelInfo: () => fetchJSON<ModelInfo>('/model/info'),
+  getProvenance: () => fetchJSON<DatasetProvenance>('/system/provenance'),
 
   // ─── Teams ──────────────────────────────────────────────────────────────────
   getTeams: (leagueId?: number) =>

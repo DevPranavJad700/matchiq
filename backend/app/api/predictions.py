@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 # In-memory rate limiting state: ip -> list of timestamps
 _rate_limit_store = defaultdict(list)
-RATE_LIMIT_MAX_REQUESTS = 30
+RATE_LIMIT_MAX_REQUESTS = 60
 RATE_LIMIT_WINDOW_SECONDS = 60
 
 
