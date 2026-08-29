@@ -143,16 +143,24 @@ def explain_prediction(feature_vector: np.ndarray) -> list[dict]:
                 shap_values = _explainer.shap_values(X_trans)
 
                 if isinstance(shap_values, list):
-                    class_shap = shap_values[best_class][0]
-                elif isinstance(shap_values, np.ndarray) and shap_values.ndim == 3:
-                    class_shap = shap_values[0, :, best_class]
-                elif isinstance(shap_values, np.ndarray) and shap_values.ndim == 2:
-                    class_shap = shap_values[0]
+                    class_shap = np.array(shap_values[best_class]).flatten()
+                elif isinstance(shap_values, np.ndarray):
+                    if shap_values.ndim == 3:
+                        if shap_values.shape[2] == len(proba):
+                            class_shap = shap_values[0, :, best_class]
+                        elif shap_values.shape[0] == len(proba):
+                            class_shap = shap_values[best_class, 0, :]
+                        else:
+                            class_shap = shap_values[0, :, 0]
+                    elif shap_values.ndim == 2:
+                        class_shap = shap_values[0]
+                    elif shap_values.ndim == 1:
+                        class_shap = shap_values
             except Exception as se:
                 logger.debug(f"SHAP explanation call bypassed: {se}")
 
         # 2. Fallback to coefficient-based feature contribution for linear/logistic models
-        if class_shap is None:
+        if class_shap is None or np.all(np.abs(class_shap) < 1e-6):
             clf = _model.named_steps.get("clf", _model) if hasattr(_model, "named_steps") else _model
             scaler = _model.named_steps.get("scaler", None) if hasattr(_model, "named_steps") else None
 
@@ -160,10 +168,21 @@ def explain_prediction(feature_vector: np.ndarray) -> list[dict]:
                 coefs = clf.coef_[best_class] if clf.coef_.ndim > 1 else clf.coef_
                 X_trans = scaler.transform(feature_vector)[0] if scaler else feature_vector[0]
                 class_shap = X_trans * coefs
-            else:
-                # Feature importance fallback for RF/XGBoost
-                importances = getattr(clf, "feature_importances_", np.zeros(len(_feature_names)))
-                class_shap = feature_vector[0] * importances
+            elif hasattr(clf, "feature_importances_"):
+                # Feature importance signed by correlation/difference
+                importances = clf.feature_importances_
+                # Normalize and sign by feature value deviation
+                class_shap = importances * np.sign(feature_vector[0])
+
+        # 3. Robust marginal sensitivity fallback if still zero
+        if class_shap is None or np.all(np.abs(class_shap) < 1e-6):
+            base_p = proba[best_class]
+            class_shap = np.zeros(len(_feature_names))
+            for j in range(len(_feature_names)):
+                X_pert = feature_vector.copy()
+                X_pert[0, j] = 0.0
+                pert_p = predict_proba(X_pert)[0][best_class]
+                class_shap[j] = base_p - pert_p
 
         factors = []
         for fname, fval, impact in zip(_feature_names, feature_vector[0], class_shap):
@@ -187,32 +206,53 @@ def explain_prediction(feature_vector: np.ndarray) -> list[dict]:
 
 def _feature_to_description(feature: str, value: float, impact: float) -> str:
     """Convert a feature name + value into a human-readable description."""
-    direction = "positive" if impact > 0 else "negative"
-    magnitude = "strongly" if abs(impact) > 0.15 else ("moderately" if abs(impact) > 0.05 else "slightly")
+    direction = "positive" if impact >= 0 else "negative"
+    magnitude = "strongly" if abs(impact) > 0.10 else ("moderately" if abs(impact) > 0.03 else "slightly")
 
     label_map = {
         "home_form_pts_last5": f"Home team earned {value:.0f} pts from last 5 matches",
         "away_form_pts_last5": f"Away team earned {value:.0f} pts from last 5 matches",
+        "home_form_wins_last5": f"Home team won {value:.0f} of last 5 matches",
+        "away_form_wins_last5": f"Away team won {value:.0f} of last 5 matches",
+        "home_form_draws_last5": f"Home team drew {value:.0f} of last 5 matches",
+        "away_form_draws_last5": f"Away team drew {value:.0f} of last 5 matches",
+        "home_form_losses_last5": f"Home team lost {value:.0f} of last 5 matches",
+        "away_form_losses_last5": f"Away team lost {value:.0f} of last 5 matches",
+        "home_form_gd_last5": f"Home team goal diff in last 5 matches: {value:+.0f}",
+        "away_form_gd_last5": f"Away team goal diff in last 5 matches: {value:+.0f}",
         "home_avg_goals_scored": f"Home team scores {value:.2f} goals/match on avg",
         "away_avg_goals_scored": f"Away team scores {value:.2f} goals/match on avg",
         "home_avg_goals_conceded": f"Home team concedes {value:.2f} goals/match on avg",
         "away_avg_goals_conceded": f"Away team concedes {value:.2f} goals/match on avg",
-        "home_league_position": f"Home team is {value:.0f}th in the league",
-        "away_league_position": f"Away team is {value:.0f}th in the league",
-        "form_diff": f"Home form advantage of {value:.2f} pts",
-        "attack_diff": f"Attack strength difference: {value:.2f}",
-        "defence_diff": f"Defence strength difference: {value:.2f}",
-        "position_diff": f"League position difference: {value:.0f}",
-        "h2h_home_wins": f"Home team won {value:.0f} of last H2H meetings",
-        "h2h_away_wins": f"Away team won {value:.0f} of last H2H meetings",
-        "home_home_win_rate": f"Home team wins {value*100:.0f}% of home matches",
-        "away_away_win_rate": f"Away team wins {value*100:.0f}% of away matches",
+        "home_avg_shots": f"Home team averages {value:.1f} shots per match",
+        "away_avg_shots": f"Away team averages {value:.1f} shots per match",
+        "home_avg_shots_on_target": f"Home team averages {value:.1f} shots on target",
+        "away_avg_shots_on_target": f"Away team averages {value:.1f} shots on target",
+        "home_avg_xg": f"Home team estimated xG: {value:.2f}",
+        "away_avg_xg": f"Away team estimated xG: {value:.2f}",
+        "home_league_position": f"Home team is {value:.0f}th in current standings",
+        "away_league_position": f"Away team is {value:.0f}th in current standings",
+        "home_points": f"Home team accumulated {value:.0f} pts this season",
+        "away_points": f"Away team accumulated {value:.0f} pts this season",
+        "points_diff": f"Pre-match points difference: {value:+.0f} pts",
+        "position_diff": f"Pre-match league position diff: {value:+.0f}",
+        "form_diff": f"Recent 5-match form advantage: {value:+.2f} pts",
+        "attack_diff": f"Attack strength difference: {value:+.2f} goals",
+        "defence_diff": f"Defence strength difference: {value:+.2f} goals",
+        "xg_diff": f"Expected goals (xG) differential: {value:+.2f}",
+        "h2h_home_wins": f"Home team won {value:.0f} recent head-to-head matches",
+        "h2h_away_wins": f"Away team won {value:.0f} recent head-to-head matches",
+        "h2h_draws": f"Recent head-to-head drawn matches: {value:.0f}",
+        "home_home_win_rate": f"Home team wins {value*100:.0f}% of home fixtures",
+        "away_away_win_rate": f"Away team wins {value*100:.0f}% of away fixtures",
+        "home_home_goals_avg": f"Home team scores {value:.2f} goals/match at home",
+        "away_away_goals_avg": f"Away team scores {value:.2f} goals/match away",
         "home_elo": f"Home team Elo power rating: {value:.0f}",
         "away_elo": f"Away team Elo power rating: {value:.0f}",
-        "elo_diff": f"Home Elo advantage of {value:.1f} pts (inc. home field)",
-        "home_rest_days": f"Home team had {value:.0f} days of recovery",
-        "away_rest_days": f"Away team had {value:.0f} days of recovery",
-        "rest_diff": f"Rest advantage of {value:+.0f} days",
+        "elo_diff": f"Home Elo advantage of {value:+.1f} pts (inc. home field)",
+        "home_rest_days": f"Home squad has {value:.0f} days of recovery",
+        "away_rest_days": f"Away squad has {value:.0f} days of recovery",
+        "rest_diff": f"Schedule recovery advantage: {value:+.0f} days",
     }
 
     base = label_map.get(feature, f"{feature.replace('_', ' ').title()}: {value:.3f}")

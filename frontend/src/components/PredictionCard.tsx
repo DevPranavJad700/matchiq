@@ -136,26 +136,31 @@ export function ShapExplanationChart({ factors }: ShapChartProps) {
   }
 
   const sorted = [...factors].sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact)).slice(0, 8);
-  const maxAbs = Math.max(...sorted.map((f) => Math.abs(f.impact)));
+  const maxAbs = Math.max(...sorted.map((f) => Math.abs(f.impact)), 0.001);
 
   return (
-    <div className="flex flex-col gap-2.5">
+    <div className="flex flex-col gap-3">
       {sorted.map((factor) => {
-        const isPositive = factor.impact > 0;
-        const pct = maxAbs > 0 ? (Math.abs(factor.impact) / maxAbs) * 100 : 0;
+        const isPositive = factor.impact >= 0;
+        const pct = Math.min(100, Math.max(8, (Math.abs(factor.impact) / maxAbs) * 100));
         const color = isPositive ? '#54C878' : '#EF4444';
         const label = factor.feature.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 
         return (
-          <div key={factor.feature} className="py-1.5 border-b border-[var(--border)] last:border-b-0">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-[#F4F5F2] truncate max-w-[220px]" title={label}>
+          <div key={factor.feature} className="py-1 border-b border-[var(--border)] last:border-b-0">
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-sm font-semibold text-[#F4F5F2] truncate max-w-[240px]" title={factor.description}>
                 {label}
               </span>
               <span className="text-xs font-mono font-bold" style={{ color }}>
                 {isPositive ? '+' : ''}{factor.impact.toFixed(3)}
               </span>
             </div>
+            {factor.description && (
+              <p className="text-[11px] text-[#9DA4AA] truncate mb-1.5" title={factor.description}>
+                {factor.description}
+              </p>
+            )}
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-[#171B1F] rounded-full h-2 overflow-hidden border border-[var(--border)]">
                 <div
