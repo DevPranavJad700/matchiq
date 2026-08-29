@@ -107,15 +107,15 @@ def verify_all():
         active_model = db.execute(select(ModelVersion).where(ModelVersion.is_active == True)).scalars().first()
 
         print(f"    Teams in DB:          {team_count} teams (expected 35)")
-        print(f"    Seasons in DB:        {season_count} seasons (expected 12)")
-        print(f"    Matches in DB:        {match_count:,} matches (expected 4,560)")
-        print(f"    Match Stats in DB:    {stat_count:,} records (expected 9,120)")
+        print(f"    Seasons in DB:        {season_count} seasons (expected 13)")
+        print(f"    Matches in DB:        {match_count:,} matches (expected 4,940)")
+        print(f"    Match Stats in DB:    {stat_count:,} records (expected 9,880)")
         print(f"    Standings in DB:      {standing_count:,} records")
         print(f"    Active Model in DB:   {active_model.version_tag if active_model else 'None'} ({active_model.algorithm if active_model else 'N/A'})")
 
         assert team_count >= 35, f"Expected 35 teams, got {team_count}"
-        assert season_count >= 12, f"Expected 12 seasons, got {season_count}"
-        assert match_count >= 4560, f"Expected 4560 matches, got {match_count}"
+        assert season_count >= 13, f"Expected 13 seasons, got {season_count}"
+        assert match_count >= 4940, f"Expected 4940 matches, got {match_count}"
         assert active_model is not None, "Active model version record not found in database!"
 
         # 5. Live Prediction Service & SHAP Explanations

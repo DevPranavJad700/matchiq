@@ -83,7 +83,11 @@ def seasonal_chronological_split(
     """
     df = df.sort_values("match_date").reset_index(drop=True)
 
-    if "season" in df.columns and set(["2023-24", "2024-25"]).issubset(set(df["season"].unique())):
+    if "season" in df.columns and set(["2024-25", "2025-26"]).issubset(set(df["season"].unique())):
+        train = df[~df["season"].isin(["2024-25", "2025-26"])].reset_index(drop=True)
+        val = df[df["season"] == "2024-25"].reset_index(drop=True)
+        test = df[df["season"] == "2025-26"].reset_index(drop=True)
+    elif "season" in df.columns and set(["2023-24", "2024-25"]).issubset(set(df["season"].unique())):
         train = df[~df["season"].isin(["2023-24", "2024-25"])].reset_index(drop=True)
         val = df[df["season"] == "2023-24"].reset_index(drop=True)
         test = df[df["season"] == "2024-25"].reset_index(drop=True)

@@ -1,6 +1,6 @@
 # ⚽ MatchIQ — Football Match Outcome Prediction & Analytics
 
-> An end-to-end, production-quality ML platform for predicting Premier League match outcomes using authentic historical match statistics (12 complete seasons: 2013–2025 from football-data.co.uk), time-aware feature engineering with anti-leakage dynamic standings and Elo ratings, candidate model selection (Voting Ensemble, Random Forest, XGBoost, Logistic Regression), SHAP explainability, and a modern React dashboard.
+> An end-to-end, production-quality ML platform for predicting Premier League match outcomes using authentic historical match statistics (13 complete seasons: 2013–2026 from football-data.co.uk), time-aware feature engineering with anti-leakage dynamic standings and Elo ratings, candidate model selection (Voting Ensemble, Random Forest, XGBoost, Logistic Regression), SHAP explainability, and a modern React dashboard.
 
 [![CI](https://github.com/DevPranavJad700/matchiq/actions/workflows/ci.yml/badge.svg)](https://github.com/DevPranavJad700/matchiq/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
@@ -101,7 +101,7 @@ cp .env.example .env
 ```bash
 pip install -r backend/requirements.txt
 python -m alembic -c backend/alembic.ini upgrade head
-python scripts/fetch_real_data.py --to-db     # Ingest 4,560 authentic Premier League matches (2013-2025)
+python scripts/fetch_real_data.py --to-db     # Ingest 4,940 authentic Premier League matches (2013-2026)
 ```
 
 **2. Model Training & Backend API:**
@@ -134,25 +134,25 @@ All 45 features use strict temporal anti-leakage with `.shift(1)`:
 
 ### Model Training & Selection (Verified Source-of-Truth Metrics)
 
-Models are evaluated on 4,560 authentic Premier League matches (12 seasons: 2013–2025) with a strict seasonal chronological split:
-- **Train Set:** 2013–14 to 2022–23 seasons (3,192 matches)
-- **Validation Set:** 2023–24 season (684 matches)
-- **Held-out Test Set:** 2024–25 season (684 matches)
+Models are evaluated on 4,940 authentic Premier League matches (13 seasons: 2013–2026) with a strict seasonal chronological split:
+- **Train Set:** 2013–14 to 2023–24 seasons (3,458 matches)
+- **Validation Set:** 2024–25 season (741 matches)
+- **Held-out Test Set:** 2025–26 season (741 matches)
 
 ```
 Model                  Validation Acc  Validation F1  Validation LogLoss  Validation Brier  Status
 Naive Majority Class   47.95%          0.3106         1.0986              0.6802            Baseline
-Logistic Regression    55.85%          0.5027         0.9676              0.5722            Candidate
-Random Forest          55.85%          0.4886         0.9602              0.5685            Runner-up
-XGBoost Classifier     55.41%          0.4885         0.9605              0.5683            Candidate
-Voting Ensemble        55.56%          0.4887         0.9597              0.5679            ← Selected Winner (Score: 0.6932)
+Logistic Regression    56.28%          0.5049         0.9632              0.5701            Candidate
+XGBoost Classifier     57.09%          0.5026         0.9572              0.5643            Runner-up
+Voting Ensemble        56.55%          0.4957         0.9531              0.5622            Candidate
+Random Forest          56.41%          0.4920         0.9515              0.5621            ← Selected Winner (Score: 0.6953)
 ```
 
-**Final Evaluation on Untouched Chronological Test Set (Voting Ensemble with Dynamic Elo):**
-* **Test Accuracy:** **54.24%** (vs Baseline 43.57% -> **+10.67% over naive baseline**)
-* **Test Weighted F1:** **0.4698** (vs Baseline 0.2644)
-* **Test Log Loss:** **0.9815** (vs Baseline 1.0695)
-* **Test Brier Score:** **0.5831** (vs Baseline 0.6476)
+**Final Evaluation on Untouched Chronological Test Set (Random Forest with Dynamic Elo):**
+* **Test Accuracy:** **49.66%** (vs Baseline 41.70% -> **+7.96% over naive baseline**)
+* **Test Weighted F1:** **0.4168** (vs Baseline 0.2454)
+* **Test Log Loss:** **1.0226** (vs Baseline 1.0848)
+* **Test Brier Score:** **0.6134** (vs Baseline 0.6574)
 
 ---
 

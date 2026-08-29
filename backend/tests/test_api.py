@@ -144,7 +144,7 @@ class TestHealth:
         assert response.status_code == 200
         data = response.json()
         assert data["is_authentic"] is True
-        assert data["total_matches"] == 4560
+        assert data["total_matches"] == 4940
         assert data["total_teams"] == 35
         assert "sha256" in data
         assert "first_match" in data

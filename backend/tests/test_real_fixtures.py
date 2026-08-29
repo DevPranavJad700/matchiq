@@ -103,7 +103,7 @@ def test_historical_fixtures_integrity(real_fixtures_db):
     _, df, _ = real_fixtures_db
     full_df = pd.read_csv(CSV_PATH)
 
-    assert len(full_df) == 4560
+    assert len(full_df) == 4940
 
     # 2013-14 opening match: Arsenal vs Aston Villa on 2013-08-17
     first = full_df.iloc[0]

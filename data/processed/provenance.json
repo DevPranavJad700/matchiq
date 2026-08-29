@@ -1,5 +1,5 @@
 {
-  "dataset_name": "Premier League Match Dataset (2013-14 to 2024-25, 12 Seasons)",
+  "dataset_name": "Premier League Match Dataset (2013-14 to 2025-26, 13 Seasons)",
   "source_urls": {
     "2013-14": "https://www.football-data.co.uk/mmz4281/1314/E0.csv",
     "2014-15": "https://www.football-data.co.uk/mmz4281/1415/E0.csv",
@@ -12,11 +12,12 @@
     "2021-22": "https://www.football-data.co.uk/mmz4281/2122/E0.csv",
     "2022-23": "https://www.football-data.co.uk/mmz4281/2223/E0.csv",
     "2023-24": "https://www.football-data.co.uk/mmz4281/2324/E0.csv",
-    "2024-25": "https://www.football-data.co.uk/mmz4281/2425/E0.csv"
+    "2024-25": "https://www.football-data.co.uk/mmz4281/2425/E0.csv",
+    "2025-26": "https://www.football-data.co.uk/mmz4281/2526/E0.csv"
   },
-  "retrieved_at": "2026-08-29T08:36:31.201051+00:00",
-  "sha256": "66e9b3fa43db5107f703332f473777f963a28d6d0013f9eaecca782b64dd5d14",
-  "total_matches": 4560,
+  "retrieved_at": "2026-08-29T08:52:51.065267+00:00",
+  "sha256": "ed8a946781ea36b04229e48f27f66426d436f77bafb21bfd7810f44471a5f546",
+  "total_matches": 4940,
   "total_teams": 35,
   "teams": [
     "AFC Bournemouth",
@@ -67,7 +68,8 @@
     "2021-22",
     "2022-23",
     "2023-24",
-    "2024-25"
+    "2024-25",
+    "2025-26"
   ],
   "season_match_counts": {
     "2013-14": 380,
@@ -81,11 +83,12 @@
     "2021-22": 380,
     "2022-23": 380,
     "2023-24": 380,
-    "2024-25": 380
+    "2024-25": 380,
+    "2025-26": 380
   },
   "date_range": {
     "start": "2013-08-17T15:00:00+00:00",
-    "end": "2025-05-25T16:00:00+00:00"
+    "end": "2026-05-24T16:00:00+00:00"
   },
   "first_match": {
     "date": "2013-08-17T15:00:00+00:00",
@@ -93,9 +96,9 @@
     "result": "A"
   },
   "last_match": {
-    "date": "2025-05-25T16:00:00+00:00",
-    "fixture": "Wolves 1-1 Brentford FC",
-    "result": "D"
+    "date": "2026-05-24T16:00:00+00:00",
+    "fixture": "West Ham United 3-0 Leeds United",
+    "result": "H"
   },
   "is_authentic": true,
   "data_mode": "real",

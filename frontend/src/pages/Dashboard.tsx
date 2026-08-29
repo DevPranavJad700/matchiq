@@ -154,16 +154,16 @@ export function Dashboard() {
         <StatCard
           label="Premier League Teams"
           value={teams?.length ? String(teams.length) : provenance ? String(provenance.total_teams) : '35'}
-          sub={provenance ? `${provenance.seasons[0]} – ${provenance.seasons[provenance.seasons.length - 1]} (${provenance.seasons.length} Seasons)` : '2013–2025 (12 Seasons)'}
+          sub={provenance ? `${provenance.seasons[0]} – ${provenance.seasons[provenance.seasons.length - 1]} (${provenance.seasons.length} Seasons)` : '2013–2026 (13 Seasons)'}
         />
         <StatCard
           label="Total Matches"
-          value={matches?.total ? matches.total.toLocaleString() : provenance ? provenance.total_matches.toLocaleString() : '4,560'}
+          value={matches?.total ? matches.total.toLocaleString() : provenance ? provenance.total_matches.toLocaleString() : '4,940'}
           sub="Authentic Premier League Dataset"
         />
         <StatCard
           label="Model Accuracy"
-          value={modelInfo?.accuracy ? `${(modelInfo.accuracy * 100).toFixed(1)}%` : '54.2%'}
+          value={modelInfo?.accuracy ? `${(modelInfo.accuracy * 100).toFixed(1)}%` : '56.6%'}
           sub={modelInfo?.algorithm ? `${modelInfo.algorithm.replace('_', ' ').toUpperCase()} (Test Set)` : 'ML Classification'}
           accent="green"
         />
