@@ -6,7 +6,7 @@ import api from '../services/api';
 import { PageLoader, ErrorBanner, EmptyState } from '../components/ui';
 
 export function AnalyticsPage() {
-  const [selectedSeason, setSelectedSeason] = useState<string>('2024-25');
+  const [selectedSeason, setSelectedSeason] = useState<string>('2025-26');
   const { data: leagues } = useQuery({ queryKey: ['leagues'], queryFn: api.getLeagues });
   const leagueId = leagues?.[0]?.id;
 
@@ -24,7 +24,7 @@ export function AnalyticsPage() {
   const seasonsList = available_seasons && available_seasons.length > 0
     ? available_seasons
     : [
-        '2024-25', '2023-24', '2022-23', '2021-22',
+        '2025-26', '2024-25', '2023-24', '2022-23', '2021-22',
         '2020-21', '2019-20', '2018-19', '2017-18',
         '2016-17', '2015-16', '2014-15', '2013-14',
       ];
