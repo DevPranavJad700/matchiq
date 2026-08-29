@@ -13,7 +13,7 @@ import numpy as np
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.orm_models import Match, Season, Team, TeamMatchStatistic
+from app.models.orm_models import Match, Season, TeamMatchStatistic
 
 logger = logging.getLogger(__name__)
 

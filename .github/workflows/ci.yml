@@ -80,8 +80,9 @@ jobs:
           assert load_model(), 'Model failed to load'
           assert is_model_loaded(), 'Model not in memory'
           meta = get_model_metadata()
-          assert meta['accuracy'] > 0.35, f'Accuracy too low: {meta[\"accuracy\"]}'
-          print('Model validation passed:', meta['algorithm'], 'acc=', meta['accuracy'])
+          acc = meta.get('accuracy', 0)
+          assert acc > 0.35, f'Accuracy too low: {acc}'
+          print('Model validation passed:', meta.get('algorithm'), 'acc=', acc)
           "
 
       - name: Upload trained model
