@@ -105,7 +105,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Footer */}
       <footer className="border-t border-[var(--border)] py-6 text-center bg-[#111417]">
         <p className="text-[#5C636A] text-xs font-medium">
-          MatchIQ · Football intelligence, simplified · Data through 2024 season · Powered by Logistic Regression & XGBoost Engine
+          MatchIQ · Football intelligence, simplified · Data through 2025–26 season · Powered by Random Forest, XGBoost & Ensemble ML Engine
         </p>
       </footer>
     </div>
