@@ -1,10 +1,10 @@
 {
   "name": "MatchIQ Model",
-  "version_tag": "random_forest-v20260829_085351",
+  "version_tag": "random_forest-v20260829_090156",
   "algorithm": "random_forest",
-  "training_date": "2026-08-29T08:53:51.134154+00:00",
+  "training_date": "2026-08-29T09:01:56.579120+00:00",
   "dataset_sha256": "ed8a946781ea36b04229e48f27f66426d436f77bafb21bfd7810f44471a5f546",
-  "model_sha256": "4f3a2ce57ecd4cdbbd43078ae960fa39559ed35d3e235cfaa54652005247545b",
+  "model_sha256": "c40c945aaaa31a5901e0e166241a1ee8fe2ec280a08926dadabed80ff169be41",
   "accuracy": 0.4966,
   "f1_score": 0.4168,
   "log_loss": 1.0226,

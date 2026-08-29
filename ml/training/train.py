@@ -516,14 +516,21 @@ def train() -> None:
     final_model = build_models()[best_name]
     final_model.fit(X_train_val, y_train_val)
 
-    # 7. Evaluate final retrained model ONCE on untouched Test set (2023-24 Season)
-    logger.info(f"\n--- Final Evaluation of {best_name} on Untouched Test Set (2023-24 Season) ---")
+    # 7. Evaluate candidate model ONCE on untouched Test set (2025-26 Season)
+    logger.info(f"\n--- Final Evaluation of {best_name} on Untouched Test Set (2025-26 Season) ---")
     test_metrics = evaluate_model(best_name, final_model, X_test, y_test, dataset_name="Test")
     baseline_metrics = evaluate_baseline(y_test, dataset_name="Test")
 
-    # 8. Save artifacts and manifest
+    # 8. Retrain winner on ALL 13 Seasons (2013-2026) for live production deployment
+    logger.info(f"\n--- Refitting Final Production Model on ALL 13 Seasons (4,940 matches: 2013–2026) ---")
+    X_all = features_df[FEATURE_NAMES].values
+    y_all = features_df["target"].values.astype(int)
+    production_model = build_models()[best_name]
+    production_model.fit(X_all, y_all)
+
+    # 9. Save artifacts and manifest
     save_model_and_manifest(
-        final_model,
+        production_model,
         best_name,
         {
             **test_metrics,
@@ -531,6 +538,7 @@ def train() -> None:
             "train_size": len(train_df),
             "val_size": len(val_df),
             "test_size": len(test_df),
+            "full_dataset_size": len(features_df),
         },
         baseline_metrics=baseline_metrics,
         dataset_sha256=dataset_sha256,
