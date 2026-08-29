@@ -1,6 +1,6 @@
 # ⚽ MatchIQ — Football Match Outcome Prediction & Analytics
 
-> An end-to-end, production-quality ML platform for predicting Premier League match outcomes using authentic historical match statistics (6 complete seasons: 2018–2024 from football-data.co.uk), time-aware feature engineering with anti-leakage dynamic standings, candidate model selection (Random Forest, XGBoost, Logistic Regression), SHAP explainability, and a modern React dashboard.
+> An end-to-end, production-quality ML platform for predicting Premier League match outcomes using authentic historical match statistics (12 complete seasons: 2013–2025 from football-data.co.uk), time-aware feature engineering with anti-leakage dynamic standings and Elo ratings, candidate model selection (Voting Ensemble, Random Forest, XGBoost, Logistic Regression), SHAP explainability, and a modern React dashboard.
 
 [![CI](https://github.com/DevPranavJad700/matchiq/actions/workflows/ci.yml/badge.svg)](https://github.com/DevPranavJad700/matchiq/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
@@ -101,7 +101,7 @@ cp .env.example .env
 ```bash
 pip install -r backend/requirements.txt
 python -m alembic -c backend/alembic.ini upgrade head
-python scripts/fetch_real_data.py --to-db     # Ingest 2,280 authentic Premier League matches (2018-2024)
+python scripts/fetch_real_data.py --to-db     # Ingest 4,560 authentic Premier League matches (2013-2025)
 ```
 
 **2. Model Training & Backend API:**
@@ -134,25 +134,25 @@ All 45 features use strict temporal anti-leakage with `.shift(1)`:
 
 ### Model Training & Selection (Verified Source-of-Truth Metrics)
 
-Models are evaluated on 2,280 authentic Premier League matches with a strict seasonal chronological split:
-- **Train Set:** 2018–19 to 2021–22 seasons (1,596 matches)
-- **Validation Set:** 2022–23 season (342 matches)
-- **Held-out Test Set:** 2023–24 season (342 matches)
+Models are evaluated on 4,560 authentic Premier League matches (12 seasons: 2013–2025) with a strict seasonal chronological split:
+- **Train Set:** 2013–14 to 2022–23 seasons (3,192 matches)
+- **Validation Set:** 2023–24 season (684 matches)
+- **Held-out Test Set:** 2024–25 season (684 matches)
 
 ```
 Model                  Validation Acc  Validation F1  Validation LogLoss  Validation Brier  Status
 Naive Majority Class   47.95%          0.3106         1.0986              0.6802            Baseline
-Logistic Regression    53.22%          0.4901         0.9927              0.5891            Candidate
-XGBoost Classifier     56.14%          0.4981         0.9710              0.5754            Runner-up
-Voting Ensemble        56.43%          0.4999         0.9693              0.5743            Candidate
-Random Forest          56.14%          0.4920         0.9664              0.5723            ← Selected Winner
+Logistic Regression    55.85%          0.5027         0.9676              0.5722            Candidate
+Random Forest          55.85%          0.4886         0.9602              0.5685            Runner-up
+XGBoost Classifier     55.41%          0.4885         0.9605              0.5683            Candidate
+Voting Ensemble        55.56%          0.4887         0.9597              0.5679            ← Selected Winner (Score: 0.6932)
 ```
 
-**Final Evaluation on Untouched Chronological Test Set (Random Forest with Dynamic Elo):**
-* **Test Accuracy:** **57.02%** (vs Baseline 46.49%)
-* **Test Weighted F1:** **0.5011** (vs Baseline 0.2951)
-* **Test Log Loss:** **0.9441** (vs Baseline 1.0532)
-* **Test Brier Score:** **0.5562** (vs Baseline 0.6362)
+**Final Evaluation on Untouched Chronological Test Set (Voting Ensemble with Dynamic Elo):**
+* **Test Accuracy:** **54.24%** (vs Baseline 43.57% -> **+10.67% over naive baseline**)
+* **Test Weighted F1:** **0.4698** (vs Baseline 0.2644)
+* **Test Log Loss:** **0.9815** (vs Baseline 1.0695)
+* **Test Brier Score:** **0.5831** (vs Baseline 0.6476)
 
 ---
 

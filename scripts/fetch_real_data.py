@@ -39,12 +39,18 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(
 logger = logging.getLogger(__name__)
 
 DATA_URLS = {
+    "2013-14": "https://www.football-data.co.uk/mmz4281/1314/E0.csv",
+    "2014-15": "https://www.football-data.co.uk/mmz4281/1415/E0.csv",
+    "2015-16": "https://www.football-data.co.uk/mmz4281/1516/E0.csv",
+    "2016-17": "https://www.football-data.co.uk/mmz4281/1617/E0.csv",
+    "2017-18": "https://www.football-data.co.uk/mmz4281/1718/E0.csv",
     "2018-19": "https://www.football-data.co.uk/mmz4281/1819/E0.csv",
     "2019-20": "https://www.football-data.co.uk/mmz4281/1920/E0.csv",
     "2020-21": "https://www.football-data.co.uk/mmz4281/2021/E0.csv",
     "2021-22": "https://www.football-data.co.uk/mmz4281/2122/E0.csv",
     "2022-23": "https://www.football-data.co.uk/mmz4281/2223/E0.csv",
     "2023-24": "https://www.football-data.co.uk/mmz4281/2324/E0.csv",
+    "2024-25": "https://www.football-data.co.uk/mmz4281/2425/E0.csv",
 }
 
 # Standardize team names to canonical names across all seasons
@@ -79,6 +85,13 @@ TEAM_NAME_MAP = {
     "Cardiff": "Cardiff City",
     "Huddersfield": "Huddersfield Town",
     "West Brom": "West Bromwich Albion",
+    "Hull": "Hull City",
+    "Ipswich": "Ipswich Town",
+    "Sunderland": "Sunderland AFC",
+    "Stoke": "Stoke City",
+    "Swansea": "Swansea City",
+    "Middlesbrough": "Middlesbrough FC",
+    "QPR": "Queens Park Rangers",
 }
 
 

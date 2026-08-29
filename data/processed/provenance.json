@@ -1,17 +1,23 @@
 {
   "dataset_name": "Premier League Match Dataset (2018-2024, 6 Seasons)",
   "source_urls": {
+    "2013-14": "https://www.football-data.co.uk/mmz4281/1314/E0.csv",
+    "2014-15": "https://www.football-data.co.uk/mmz4281/1415/E0.csv",
+    "2015-16": "https://www.football-data.co.uk/mmz4281/1516/E0.csv",
+    "2016-17": "https://www.football-data.co.uk/mmz4281/1617/E0.csv",
+    "2017-18": "https://www.football-data.co.uk/mmz4281/1718/E0.csv",
     "2018-19": "https://www.football-data.co.uk/mmz4281/1819/E0.csv",
     "2019-20": "https://www.football-data.co.uk/mmz4281/1920/E0.csv",
     "2020-21": "https://www.football-data.co.uk/mmz4281/2021/E0.csv",
     "2021-22": "https://www.football-data.co.uk/mmz4281/2122/E0.csv",
     "2022-23": "https://www.football-data.co.uk/mmz4281/2223/E0.csv",
-    "2023-24": "https://www.football-data.co.uk/mmz4281/2324/E0.csv"
+    "2023-24": "https://www.football-data.co.uk/mmz4281/2324/E0.csv",
+    "2024-25": "https://www.football-data.co.uk/mmz4281/2425/E0.csv"
   },
-  "retrieved_at": "2026-08-29T06:30:26.447477+00:00",
-  "sha256": "6dbfbaf8eccecadb7dce4aa994825d5c2d058dcd29e46e67e4a43f45bc8387dd",
-  "total_matches": 2280,
-  "total_teams": 28,
+  "retrieved_at": "2026-08-29T08:29:32.689424+00:00",
+  "sha256": "66e9b3fa43db5107f703332f473777f963a28d6d0013f9eaecca782b64dd5d14",
+  "total_matches": 4560,
+  "total_teams": 35,
   "teams": [
     "AFC Bournemouth",
     "Arsenal FC",
@@ -25,17 +31,24 @@
     "Everton FC",
     "Fulham FC",
     "Huddersfield Town",
+    "Hull City",
+    "Ipswich Town",
     "Leeds United",
     "Leicester City",
     "Liverpool FC",
     "Luton Town",
     "Manchester City",
     "Manchester United",
+    "Middlesbrough FC",
     "Newcastle United",
     "Norwich City",
     "Nottingham Forest",
+    "Queens Park Rangers",
     "Sheffield United",
     "Southampton FC",
+    "Stoke City",
+    "Sunderland AFC",
+    "Swansea City",
     "Tottenham Hotspur",
     "Watford",
     "West Bromwich Albion",
@@ -43,34 +56,46 @@
     "Wolves"
   ],
   "seasons": [
+    "2013-14",
+    "2014-15",
+    "2015-16",
+    "2016-17",
+    "2017-18",
     "2018-19",
     "2019-20",
     "2020-21",
     "2021-22",
     "2022-23",
-    "2023-24"
+    "2023-24",
+    "2024-25"
   ],
   "season_match_counts": {
+    "2013-14": 380,
+    "2014-15": 380,
+    "2015-16": 380,
+    "2016-17": 380,
+    "2017-18": 380,
     "2018-19": 380,
     "2019-20": 380,
     "2020-21": 380,
     "2021-22": 380,
     "2022-23": 380,
-    "2023-24": 380
+    "2023-24": 380,
+    "2024-25": 380
   },
   "date_range": {
-    "start": "2018-08-10T15:00:00+00:00",
-    "end": "2024-05-19T16:00:00+00:00"
+    "start": "2013-08-17T15:00:00+00:00",
+    "end": "2025-05-25T16:00:00+00:00"
   },
   "first_match": {
-    "date": "2018-08-10T15:00:00+00:00",
-    "fixture": "Manchester United 2-1 Leicester City",
-    "result": "H"
+    "date": "2013-08-17T15:00:00+00:00",
+    "fixture": "Arsenal FC 1-3 Aston Villa",
+    "result": "A"
   },
   "last_match": {
-    "date": "2024-05-19T16:00:00+00:00",
-    "fixture": "Sheffield United 0-3 Tottenham Hotspur",
-    "result": "A"
+    "date": "2025-05-25T16:00:00+00:00",
+    "fixture": "Wolves 1-1 Brentford FC",
+    "result": "D"
   },
   "is_authentic": true,
   "data_mode": "real",

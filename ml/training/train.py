@@ -77,13 +77,17 @@ def seasonal_chronological_split(
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Split data by completed seasons chronologically.
 
-    - Train: older seasons (2018-19 through 2021-22)
-    - Validation: 2022-23 season
-    - Test: 2023-24 season
+    - Train: older seasons (2013-14 through 2022-23)
+    - Validation: 2023-24 season
+    - Test: 2024-25 season (or 2023-24 if only 6 seasons present)
     """
     df = df.sort_values("match_date").reset_index(drop=True)
 
-    if "season" in df.columns and set(["2022-23", "2023-24"]).issubset(set(df["season"].unique())):
+    if "season" in df.columns and set(["2023-24", "2024-25"]).issubset(set(df["season"].unique())):
+        train = df[~df["season"].isin(["2023-24", "2024-25"])].reset_index(drop=True)
+        val = df[df["season"] == "2023-24"].reset_index(drop=True)
+        test = df[df["season"] == "2024-25"].reset_index(drop=True)
+    elif "season" in df.columns and set(["2022-23", "2023-24"]).issubset(set(df["season"].unique())):
         train = df[~df["season"].isin(["2022-23", "2023-24"])].reset_index(drop=True)
         val = df[df["season"] == "2022-23"].reset_index(drop=True)
         test = df[df["season"] == "2023-24"].reset_index(drop=True)

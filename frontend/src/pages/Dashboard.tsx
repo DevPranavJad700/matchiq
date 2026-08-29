@@ -125,7 +125,7 @@ export function Dashboard() {
                 <p className="text-sm font-semibold text-[#F4F5F2]">
                   {modelInfo?.algorithm ? modelInfo.algorithm.toUpperCase() : 'ML Engine'}
                 </p>
-                <p>39 time-aware features with anti-leakage rolling windows.</p>
+                <p>45 time-aware features with dynamic Elo and anti-leakage rolling windows.</p>
                 <Link
                   to="/predict"
                   className="inline-flex items-center gap-1 text-xs text-[#54C878] font-bold pt-1 hover:underline"
@@ -153,17 +153,17 @@ export function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
           label="Premier League Teams"
-          value={teams?.length ? String(teams.length) : provenance ? String(provenance.total_teams) : '28'}
-          sub={provenance ? `${provenance.seasons[0]} – ${provenance.seasons[provenance.seasons.length - 1]}` : '2018–2024 (6 Seasons)'}
+          value={teams?.length ? String(teams.length) : provenance ? String(provenance.total_teams) : '35'}
+          sub={provenance ? `${provenance.seasons[0]} – ${provenance.seasons[provenance.seasons.length - 1]} (${provenance.seasons.length} Seasons)` : '2013–2025 (12 Seasons)'}
         />
         <StatCard
           label="Total Matches"
-          value={matches?.total ? matches.total.toLocaleString() : provenance ? provenance.total_matches.toLocaleString() : '2,280'}
-          sub="Historical Match Dataset"
+          value={matches?.total ? matches.total.toLocaleString() : provenance ? provenance.total_matches.toLocaleString() : '4,560'}
+          sub="Authentic Premier League Dataset"
         />
         <StatCard
           label="Model Accuracy"
-          value={modelInfo?.accuracy ? `${(modelInfo.accuracy * 100).toFixed(1)}%` : '50.6%'}
+          value={modelInfo?.accuracy ? `${(modelInfo.accuracy * 100).toFixed(1)}%` : '54.2%'}
           sub={modelInfo?.algorithm ? `${modelInfo.algorithm.replace('_', ' ').toUpperCase()} (Test Set)` : 'ML Classification'}
           accent="green"
         />

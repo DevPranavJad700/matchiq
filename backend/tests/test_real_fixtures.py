@@ -103,15 +103,15 @@ def test_historical_fixtures_integrity(real_fixtures_db):
     _, df, _ = real_fixtures_db
     full_df = pd.read_csv(CSV_PATH)
 
-    assert len(full_df) == 2280
+    assert len(full_df) == 4560
 
-    # 2018-19 opening match: Man United vs Leicester on 2018-08-10
+    # 2013-14 opening match: Arsenal vs Aston Villa on 2013-08-17
     first = full_df.iloc[0]
-    assert first["home_team_name"] == "Manchester United"
-    assert first["away_team_name"] == "Leicester City"
-    assert first["home_goals"] == 2
-    assert first["away_goals"] == 1
-    assert "2018-08-10" in str(first["match_date"])
+    assert first["home_team_name"] == "Arsenal FC"
+    assert first["away_team_name"] == "Aston Villa"
+    assert first["home_goals"] == 1
+    assert first["away_goals"] == 3
+    assert "2013-08-17" in str(first["match_date"])
 
     # 2021-22 opening match: Brentford vs Arsenal on 2021-08-13
     brentford_match = full_df[
