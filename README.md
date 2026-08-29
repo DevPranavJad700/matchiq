@@ -1,6 +1,6 @@
 # ⚽ MatchIQ — Football Match Outcome Prediction & Analytics
 
-> An end-to-end, production-quality ML platform for predicting Premier League match outcomes using authentic historical match statistics (2021–2024 from football-data.co.uk), time-aware feature engineering with anti-leakage dynamic standings, multi-model evaluation (XGBoost, Random Forest, Logistic Regression), SHAP explainability, and a modern React dashboard.
+> An end-to-end, production-quality ML platform for predicting Premier League match outcomes using authentic historical match statistics (6 complete seasons: 2018–2024 from football-data.co.uk), time-aware feature engineering with anti-leakage dynamic standings, candidate model selection (Random Forest, XGBoost, Logistic Regression), SHAP explainability, and a modern React dashboard.
 
 [![CI](https://github.com/DevPranavJad700/matchiq/actions/workflows/ci.yml/badge.svg)](https://github.com/DevPranavJad700/matchiq/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
@@ -17,14 +17,14 @@ MatchIQ is a **full-stack, production-ready** platform demonstrating:
 
 | Skill Area | Technologies & Architecture |
 |---|---|
-| **Machine Learning** | XGBoost, Random Forest, Logistic Regression, scikit-learn |
+| **Machine Learning** | Random Forest, XGBoost, Logistic Regression, scikit-learn |
 | **Explainability (XAI)** | SHAP (TreeExplainer/LinearExplainer) — feature-level prediction reasoning |
 | **Data Engineering** | Authentic historical Premier League ingestion (football-data.co.uk), dynamic pre-match standings, anti-leakage rolling windows |
 | **Dataset Provenance** | Cryptographic SHA-256 checksums, URL source tracking, training manifests |
 | **Backend API** | FastAPI, SQLAlchemy 2.0, Alembic, Pydantic v2, PostgreSQL / SQLite, Repository Pattern |
 | **Frontend** | React 19, TypeScript, Vitest, TanStack Query, Recharts, Tailwind CSS |
 | **DevOps** | Docker, Docker Compose, Nginx, GitHub Actions CI/CD |
-| **Testing** | 32 Pytest backend tests (API, feature parity, real fixture regression), 7 Vitest frontend component tests |
+| **Testing** | 33 Pytest backend tests (API, feature parity, real fixture regression), 7 Vitest frontend component tests |
 | **Documentation** | [Interview Guide](docs/interview-guide.md), [ML Analysis](docs/ml-model-analysis.md), [Deployment Guide](docs/deployment-guide.md) |
 
 ---
@@ -42,7 +42,7 @@ matchiq/
 │   │   ├── models/            # ORM models (SQLAlchemy 2.0)
 │   │   ├── schemas/           # Pydantic v2 response schemas
 │   │   └── services/          # Business logic (PredictionService, FeatureBuilder)
-│   └── tests/                 # pytest suite (32 tests: API, feature parity, real fixtures)
+│   └── tests/                 # pytest suite (33 tests: API, feature parity, real fixtures)
 │
 ├── ml/                        # ML pipeline (standalone, runnable without API)
 │   ├── features/              # Feature engineering (dynamic pre-match standings, anti-leakage rolling windows)
@@ -63,9 +63,10 @@ matchiq/
 │   ├── bootstrap.py           # Auto-boot initialization respecting DATA_MODE
 │   └── e2e_functional_test.py # End-to-end integration benchmark
 │
+├── pytest.ini                 # Root pytest configuration
 └── data/
     ├── raw/                   # Cached authentic CSV archives
-    └── processed/             # matches_processed.csv (1,140 rows) & provenance.json
+    └── processed/             # matches_processed.csv (2,280 rows) & provenance.json
 ```
 
 ---
@@ -86,9 +87,9 @@ docker compose up --build
 # 3. Open http://localhost (frontend) or http://localhost:8000/docs (API)
 ```
 
-### Option B — Local Development
+### Option B — Local Development (Without Docker)
 
-**Prerequisites:** Python 3.11+, Node.js 20+
+**Prerequisites:** Python 3.11+, Node.js 20+, PostgreSQL 14+ (or SQLite)
 
 ```bash
 git clone https://github.com/DevPranavJad700/matchiq.git
@@ -96,20 +97,25 @@ cd matchiq
 cp .env.example .env
 ```
 
-**Backend & Data & ML:**
+**1. Database Migration & Data Ingestion:**
 ```bash
 pip install -r backend/requirements.txt
-python scripts/fetch_real_data.py     # Download 1,140 authentic Premier League matches (2021-2024)
-python -m ml.training.train           # Train the ML model and generate training manifest
-uvicorn app.main:app --reload --app-dir backend  # Start API at http://localhost:8000
+python -m alembic -c backend/alembic.ini upgrade head
+python scripts/fetch_real_data.py --to-db     # Ingest 2,280 authentic Premier League matches (2018-2024)
 ```
 
-**Frontend:**
+**2. Model Training & Backend API:**
+```bash
+python -m ml.training.train                   # Train ML models and generate manifest
+python scripts/bootstrap.py                   # Verify data & register active model
+python -m uvicorn app.main:app --reload --app-dir backend --port 8000
+```
+
+**3. Frontend React SPA:**
 ```bash
 cd frontend
 npm install
-npm run test         # Run Vitest test suite
-npm run dev          # Starts at http://localhost:5173
+npm run dev                                   # Starts at http://localhost:5173
 ```
 
 ---
@@ -126,30 +132,32 @@ All 39 features use strict temporal anti-leakage with `.shift(1)`:
 
 ### Model Training & Selection (Verified Source-of-Truth Metrics)
 
-Models are evaluated on 1,140 authentic Premier League matches with a strict chronological 70/15/15 split. Candidate selection is performed on the **Validation** set, with final retrained evaluation on the untouched **Test** set (see [ML Analysis](docs/ml-model-analysis.md)):
+Models are evaluated on 2,280 authentic Premier League matches with a strict seasonal chronological split:
+- **Train Set:** 2018–19 to 2021–22 seasons (1,596 matches)
+- **Validation Set:** 2022–23 season (342 matches)
+- **Held-out Test Set:** 2023–24 season (342 matches)
 
 ```
 Model                  Validation Acc  Validation F1  Validation LogLoss  Validation Brier  Status
 Naive Majority Class   47.95%          0.3106         1.0986              0.6802            Baseline
-Logistic Regression    45.03%          0.4652         1.0524              0.6287            Candidate
-Random Forest          49.12%          0.4870         1.0190              0.6077            Runner-up
-XGBoost Classifier     57.89%          0.5479         1.0060              0.5899            ← Selected Winner
+Logistic Regression    44.15%          0.4645         1.0473              0.6281            Candidate
+XGBoost Classifier     50.88%          0.4630         1.0099              0.6014            Runner-up
+Random Forest          50.88%          0.5223         1.0125              0.6059            ← Selected Winner
 ```
 
-**Final Evaluation on Untouched Chronological Test Set (XGBoost):**
-* **Test Accuracy:** **56.73%**
-* **Test Weighted F1:** **0.5021**
-* **Test Log Loss:** **0.9435**
-* **Test Brier Score:** **0.5508**
+**Final Evaluation on Untouched Chronological Test Set (Random Forest):**
+* **Test Accuracy:** **50.58%** (vs Baseline 46.49%)
+* **Test Weighted F1:** **0.5032** (vs Baseline 0.2951)
+* **Test Log Loss:** **0.9832** (vs Baseline 1.0532)
+* **Test Brier Score:** **0.5835** (vs Baseline 0.6362)
 
 ---
 
 ## 🧪 Testing
 
 ```bash
-# Backend — 32 Pytest cases (API endpoints, feature parity, real fixture regression)
-cd backend
-python -m pytest tests/ -v
+# Backend — 33 Pytest cases (run directly from root via pytest.ini)
+python -m pytest -q
 
 # Functional E2E & Latency Benchmark
 python scripts/e2e_functional_test.py
