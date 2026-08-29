@@ -39,6 +39,7 @@ jobs:
           DATABASE_URL: sqlite:///./test.db
           SECRET_KEY: test-secret-key-ci-only
           MODEL_DIR: ../ml/models
+          PYTHONPATH: ..:.
         run: python -m pytest tests/ -v --tb=short
 
       - name: Upload test results

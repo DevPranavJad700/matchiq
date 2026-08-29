@@ -82,7 +82,7 @@ TEAM_NAME_MAP = {
 }
 
 
-def download_season_csv(season: str, url: str) -> pd.DataFrame:
+def download_season_csv(season: str, url: str) -> pd.DataFrame | None:
     """Download CSV from football-data.co.uk or load from cached raw directory."""
     raw_dir = project_root / "data" / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
@@ -90,11 +90,16 @@ def download_season_csv(season: str, url: str) -> pd.DataFrame:
 
     # Attempt download from source
     try:
+        import ssl
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
         req = urllib.request.Request(
             url,
-            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) MatchIQ/1.0"}
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
         )
-        with urllib.request.urlopen(req, timeout=15) as response:
+        with urllib.request.urlopen(req, timeout=10, context=ctx) as response:
             csv_bytes = response.read()
             raw_file.write_bytes(csv_bytes)
             logger.info(f"Downloaded and cached {season} CSV ({len(csv_bytes)} bytes) to {raw_file}")
@@ -105,9 +110,7 @@ def download_season_csv(season: str, url: str) -> pd.DataFrame:
         if raw_file.exists():
             logger.info(f"Loading cached raw file from {raw_file}...")
             return pd.read_csv(raw_file, encoding="latin1")
-        raise RuntimeError(
-            f"Failed to obtain authentic Premier League data for {season} from {url} and no cache exists."
-        ) from e
+        return None
 
 
 def parse_and_clean_matches() -> pd.DataFrame:
@@ -129,6 +132,15 @@ def parse_and_clean_matches() -> pd.DataFrame:
     for season, url in DATA_URLS.items():
         logger.info(f"Fetching authentic historical data for season {season}...")
         df = download_season_csv(season, url)
+        if df is None:
+            logger.warning(f"Could not download {season} from {url}.")
+            processed_file = project_root / "data" / "processed" / "matches_processed.csv"
+            if processed_file.exists():
+                logger.info(f"Loading authentic dataset from existing {processed_file}...")
+                return pd.read_csv(processed_file)
+            raise RuntimeError(
+                f"Failed to obtain authentic Premier League data for {season} from {url} and no local dataset exists."
+            )
 
         # Expected columns: Date, HomeTeam, AwayTeam, FTHG, FTAG, FTR
         required_cols = ["Date", "HomeTeam", "AwayTeam", "FTHG", "FTAG", "FTR"]

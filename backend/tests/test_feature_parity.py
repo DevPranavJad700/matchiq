@@ -1,11 +1,22 @@
-"""Regression tests for training-serving feature parity."""
-
+import os
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+# Ensure paths
+test_dir = Path(__file__).resolve().parent
+backend_dir = test_dir.parent
+project_root = backend_dir.parent
+
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
 
 from app.db.base import Base
 from app.models.orm_models import League, Match, Season, Team, TeamMatchStatistic
