@@ -16,10 +16,10 @@ Thank you for your interest in contributing to MatchIQ!
    pip install -r backend/requirements.txt
    ```
 
-3. **Running Database & Boot:**
+3. **Running Database Migrations & Auto-Boot:**
    ```bash
+   python -m alembic -c backend/alembic.ini upgrade head
    python scripts/bootstrap.py
-   python -m alembic upgrade head
    ```
 
 4. **Frontend Setup:**

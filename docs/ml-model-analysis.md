@@ -15,15 +15,14 @@ The MatchIQ machine learning pipeline evaluates models using **1,140 authentic h
 
 To evaluate model efficacy, we compare all models against a **Naive Majority Class Predictor** (always predicting `HOME_WIN` due to home advantage).
 
-| Predictor / Model | Accuracy | Weighted F1 | Log Loss | Improvement over Naive Baseline |
-|---|---|---|---|---|
-| **Naive Majority Class Baseline** | 45.58% | 0.2856 | 1.0986 | Baseline |
-| **Random Guessing (33.3% each)** | 33.33% | 0.3333 | 1.0986 | -12.25% |
-| **XGBoost Classifier** | 55.88% | 0.4993 | 1.0661 | +10.30% |
-| **Random Forest Classifier** | 58.24% | 0.5393 | 0.9374 | +12.66% |
-| **Logistic Regression (Selected)** | **57.06%** | **0.5666** | **0.9381** | **+11.48%** |
+| Predictor / Model | Accuracy | Weighted F1 | Log Loss | Brier Score | Selection |
+|---|---|---|---|---|---|
+| **Naive Majority Class Baseline** | 46.47% | 0.2952 | 1.0986 | 0.6802 | Baseline |
+| **XGBoost Classifier** | 45.29% | 0.4363 | 1.2054 | 0.7468 | Candidate |
+| **Random Forest Classifier** | 49.41% | 0.4769 | 1.0354 | 0.6235 | Candidate |
+| **Logistic Regression (Selected)** | **50.00%** | **0.4780** | **0.9946** | **0.5952** | **← Winner** |
 
-> **Key Takeaway:** The ML pipeline comfortably beats both random guessing (+23.7 percentage points) and the naive home-win baseline (+11.5 percentage points). In professional sports analytics, a ~57% 3-way outcome accuracy is state-of-the-art for non-market features.
+> **Key Takeaway:** Model selection is performed on the Validation set, with final evaluation on the untouched Test set. Logistic Regression achieves 50.00% accuracy, 0.4780 weighted F1, 0.9946 Log Loss, and 0.5952 Brier score.
 
 ---
 

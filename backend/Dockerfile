@@ -17,6 +17,7 @@ COPY backend/alembic.ini ./alembic.ini
 COPY backend/entrypoint.sh ./entrypoint.sh
 COPY scripts/ ./scripts/
 COPY ml/ ./ml/
+COPY data/ ./data/
 
 RUN chmod +x ./entrypoint.sh
 

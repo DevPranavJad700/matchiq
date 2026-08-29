@@ -133,9 +133,14 @@ class FeatureBuilderService:
         venue_goals = self._get_goals_for_venue(team_id, venue_matches, is_home)
 
         # --- League position / points ---
-        standing = self._get_latest_standing(team_id)
+        standing = self._get_latest_standing(team_id, as_of)
         position = standing.position if standing else 10
-        points = standing.points if standing else 0
+        if standing:
+            points = standing.points
+        else:
+            # Compute cumulative points from all prior completed matches before as_of
+            all_past = self._get_recent_matches(team_id, as_of, limit=100)
+            points = sum(self._compute_match_pts(team_id, m) for m in all_past)
 
         return {
             f"{prefix}_form_pts_last5": form5["points"],
@@ -153,6 +158,17 @@ class FeatureBuilderService:
             f"{prefix}_league_position": float(position),
             f"{prefix}_points": float(points),
         }
+
+    def _compute_match_pts(self, team_id: int, match) -> int:
+        """Compute points earned by team_id in a single match."""
+        if match.result is None:
+            return 0
+        is_home = match.home_team_id == team_id
+        if (is_home and match.result == "H") or (not is_home and match.result == "A"):
+            return 3
+        if match.result == "D":
+            return 1
+        return 0
 
     def _compute_form(self, team_id: int, matches: list) -> dict:
         """Compute form stats from a list of matches."""
@@ -240,10 +256,10 @@ class FeatureBuilderService:
                 goals.append(stat.goals)
         return round(sum(goals) / len(goals), 3) if goals else 0.0
 
-    def _get_latest_standing(self, team_id: int):
+    def _get_latest_standing(self, team_id: int, as_of: datetime):
         return self.db.execute(
             select(Standing)
-            .where(Standing.team_id == team_id)
+            .where(Standing.team_id == team_id, Standing.updated_at <= as_of)
             .order_by(Standing.updated_at.desc())
             .limit(1)
         ).scalar_one_or_none()

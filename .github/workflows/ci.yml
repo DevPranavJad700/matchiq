@@ -194,4 +194,3 @@ jobs:
       - name: ESLint
         working-directory: frontend
         run: npx oxlint
-        continue-on-error: true

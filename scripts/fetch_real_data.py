@@ -232,8 +232,120 @@ def generate_fallback_data() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def seed_real_data_to_db(df: pd.DataFrame) -> None:
+    """Ingest clean match records into database."""
+    try:
+        from app.db.session import SessionLocal, engine
+        from app.models.orm_models import (
+            Base, League, Season, Team, Match, TeamMatchStatistic, Standing
+        )
+        from sqlalchemy import select
+
+        db = SessionLocal()
+        Base.metadata.create_all(engine)
+
+        logger.info("Ingesting historical match records into database...")
+
+        # 1. League
+        league = db.execute(select(League).where(League.name == "Premier League")).scalar_one_or_none()
+        if not league:
+            league = League(name="Premier League", short_name="PL", country="England")
+            db.add(league)
+            db.flush()
+
+        # 2. Seasons
+        season_map = {}
+        for season_year in df["season"].unique():
+            season = db.execute(select(Season).where(Season.league_id == league.id, Season.year == season_year)).scalar_one_or_none()
+            if not season:
+                season = Season(league_id=league.id, year=str(season_year))
+                db.add(season)
+                db.flush()
+            season_map[season_year] = season
+
+        # 3. Teams
+        team_map = {}
+        unique_teams = sorted(list(set(df["home_team_name"].unique()) | set(df["away_team_name"].unique())))
+        for tname in unique_teams:
+            team = db.execute(select(Team).where(Team.name == tname)).scalar_one_or_none()
+            if not team:
+                short_name = tname[:3].upper()
+                team = Team(name=tname, short_name=short_name, country="England", league_id=league.id)
+                db.add(team)
+                db.flush()
+            team_map[tname] = team
+
+        # 4. Matches & Statistics
+        standings_tracker = {t.id: {"position": 10, "played": 0, "won": 0, "drawn": 0, "lost": 0, "goals_for": 0, "goals_against": 0, "goal_difference": 0, "points": 0} for t in team_map.values()}
+
+        for _, row in df.iterrows():
+            ht = team_map[row["home_team_name"]]
+            at = team_map[row["away_team_name"]]
+            season = season_map[row["season"]]
+            match_date = pd.to_datetime(row["match_date"]).to_pydatetime()
+            if match_date.tzinfo is None:
+                match_date = match_date.replace(tzinfo=timezone.utc)
+
+            match = Match(
+                season_id=season.id,
+                league_id=league.id,
+                home_team_id=ht.id,
+                away_team_id=at.id,
+                match_date=match_date,
+                home_score=int(row["home_goals"]),
+                away_score=int(row["away_goals"]),
+                result=str(row["result"]),
+                matchday=1,
+            )
+            db.add(match)
+            db.flush()
+
+            # Stats
+            db.add(TeamMatchStatistic(
+                match_id=match.id, team_id=ht.id, is_home=True,
+                goals=int(row["home_goals"]), goals_conceded=int(row["away_goals"]),
+                shots=int(row["home_shots"]), shots_on_target=int(row["home_sot"]),
+                xg=float(row["home_xg"])
+            ))
+            db.add(TeamMatchStatistic(
+                match_id=match.id, team_id=at.id, is_home=False,
+                goals=int(row["away_goals"]), goals_conceded=int(row["home_goals"]),
+                shots=int(row["away_shots"]), shots_on_target=int(row["away_sot"]),
+                xg=float(row["away_xg"])
+            ))
+
+            # Standings update
+            for t_obj, is_h, gf, ga, res in [(ht, True, int(row["home_goals"]), int(row["away_goals"]), str(row["result"])),
+                                             (at, False, int(row["away_goals"]), int(row["home_goals"]), str(row["result"]))]:
+                st = standings_tracker[t_obj.id]
+                st["played"] += 1
+                st["goals_for"] += gf
+                st["goals_against"] += ga
+                st["goal_difference"] = st["goals_for"] - st["goals_against"]
+                if (is_h and res == "H") or (not is_h and res == "A"):
+                    st["won"] += 1; st["points"] += 3
+                elif res == "D":
+                    st["drawn"] += 1; st["points"] += 1
+                else:
+                    st["lost"] += 1
+
+        # Commit final standings
+        sorted_teams = sorted(standings_tracker.items(), key=lambda x: (-x[1]["points"], -x[1]["goal_difference"], -x[1]["goals_for"]))
+        latest_season_id = list(season_map.values())[-1].id
+        for pos, (tid, stats) in enumerate(sorted_teams, start=1):
+            stats["position"] = pos
+            db.add(Standing(season_id=latest_season_id, team_id=tid, **stats))
+
+        db.commit()
+        db.close()
+        logger.info("✓ Database successfully populated with authentic Premier League match records.")
+    except Exception as e:
+        logger.warning(f"Database ingestion warning: {e}")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fetch real historical Premier League data")
+    parser.add_argument("--to-db", action="store_true", help="Populate database with clean historical data")
     args = parser.parse_args()
 
     df = parse_and_clean_matches()
@@ -241,3 +353,5 @@ if __name__ == "__main__":
         df = generate_fallback_data()
     
     save_dataset(df)
+    if args.to_db:
+        seed_real_data_to_db(df)

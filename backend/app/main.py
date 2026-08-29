@@ -51,13 +51,24 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Register routers
+    # Register routers (available at root and under /api/v1)
     app.include_router(health_router)
+    app.include_router(health_router, prefix="/api/v1")
+
     app.include_router(teams_router)
+    app.include_router(teams_router, prefix="/api/v1")
+
     app.include_router(matches_router)
+    app.include_router(matches_router, prefix="/api/v1")
+
     app.include_router(leagues_router)
+    app.include_router(leagues_router, prefix="/api/v1")
+
     app.include_router(predictions_router)
+    app.include_router(predictions_router, prefix="/api/v1")
+
     app.include_router(analytics_router)
+    app.include_router(analytics_router, prefix="/api/v1")
 
     return app
 

@@ -2,8 +2,10 @@
 
 import json
 import logging
+import time
+from collections import defaultdict
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -19,14 +21,34 @@ from app.services.prediction_service import PredictionService
 router = APIRouter(prefix="/predict", tags=["predictions"])
 logger = logging.getLogger(__name__)
 
+# In-memory rate limiting state: ip -> list of timestamps
+_rate_limit_store = defaultdict(list)
+RATE_LIMIT_MAX_REQUESTS = 30
+RATE_LIMIT_WINDOW_SECONDS = 60
+
+
+def check_rate_limit(request: Request):
+    """Enforce simple rate limiting per client IP."""
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    now = time.time()
+    timestamps = [t for t in _rate_limit_store[client_ip] if now - t < RATE_LIMIT_WINDOW_SECONDS]
+    if len(timestamps) >= RATE_LIMIT_MAX_REQUESTS:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded ({RATE_LIMIT_MAX_REQUESTS} requests per minute). Try again later."
+        )
+    timestamps.append(now)
+    _rate_limit_store[client_ip] = timestamps
+
 
 @router.post("", response_model=PredictionOut)
-def predict_match(request: PredictRequest, db: Session = Depends(get_db)):
+def predict_match(request: PredictRequest, req: Request, db: Session = Depends(get_db)):
     """
     Predict the outcome of a match between two teams.
 
     Returns probabilities for HOME_WIN / DRAW / AWAY_WIN with SHAP explanations.
     """
+    check_rate_limit(req)
     logger.info(f"Prediction request: home={request.home_team_id} away={request.away_team_id}")
     try:
         service = PredictionService(db)

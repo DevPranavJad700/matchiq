@@ -316,8 +316,10 @@ def train() -> None:
     features_df = compute_features(raw_df)
     features_df = features_df.dropna(subset=["target"])
 
-    # Remove first 5 matches per team (insufficient history for rolling features)
-    features_df = features_df[features_df.index >= 10].reset_index(drop=True)
+    # Remove early season matches where teams lack 5 prior completed matches
+    features_df = features_df[
+        (features_df["home_form_pts_last5"].notna()) & (features_df["away_form_pts_last5"].notna())
+    ].reset_index(drop=True)
 
     logger.info(f"Feature matrix shape: {features_df[FEATURE_NAMES].shape}")
     logger.info(f"Class distribution:\n{features_df['target'].value_counts()}")

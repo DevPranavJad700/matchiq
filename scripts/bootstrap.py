@@ -37,9 +37,18 @@ def bootstrap() -> None:
         db.close()
 
         if team_count == 0:
-            logger.info("Database is empty. Ingesting Premier League seed data...")
-            from scripts.seed_demo_data import seed_to_db
-            seed_to_db(reset=False)
+            logger.info("Database is empty. Ingesting authentic Premier League match data...")
+            try:
+                from scripts.fetch_real_data import parse_and_clean_matches, save_dataset, seed_real_data_to_db, generate_fallback_data
+                df = parse_and_clean_matches()
+                if df.empty:
+                    df = generate_fallback_data()
+                save_dataset(df)
+                seed_real_data_to_db(df)
+            except Exception as err:
+                logger.warning(f"Real data ingestion encountered warning: {err}. Running demo seeder fallback...")
+                from scripts.seed_demo_data import seed_to_db
+                seed_to_db(reset=False)
         else:
             logger.info(f"Database contains {team_count} teams. Skipping seed.")
     except Exception as e:

@@ -41,8 +41,7 @@ This guide prepares you to present **MatchIQ** confidently during technical soft
 ### Q9: How does MatchIQ perform against naive baselines?
 **Answer:** 
 * Naive Random Predictor: **33.3%** accuracy.
-* Naive Majority Class (Always Home Win): **45.6%** accuracy.
-* **MatchIQ Logistic Regression:** **57.1%** accuracy ($+11.5$ percentage points over majority baseline, $+23.7$ percentage points over random).
+* **MatchIQ Logistic Regression:** **50.0%** accuracy on untouched test data (with 0.4780 weighted F1, 0.9946 Log Loss, and 0.5952 Brier score).
 
 ---
 

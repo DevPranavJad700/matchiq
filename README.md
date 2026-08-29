@@ -150,7 +150,7 @@ Logistic Regression    50.00%     0.4780        0.9946     0.5952       ← Sele
 ## 🧪 Testing
 
 ```bash
-# Backend — 26 Pytest cases (SQLite isolated)
+# Backend — 29 Pytest cases (SQLite isolated)
 cd backend
 python -m pytest tests/ -v
 
