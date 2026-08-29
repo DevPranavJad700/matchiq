@@ -1,6 +1,8 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Home, Zap, Users, Calendar, TrendingUp } from 'lucide-react';
 import { clsx } from 'clsx';
+import api from '../services/api';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: Home },
@@ -12,6 +14,14 @@ const navItems = [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+
+  const { data: health } = useQuery({
+    queryKey: ['health'],
+    queryFn: () => api.getHealth(),
+    refetchInterval: 30000,
+  });
+
+  const isModelActive = health?.model_loaded ?? false;
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-base)' }}>
@@ -54,8 +64,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
             {/* Product Status Indicator */}
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-md border border-[var(--border)] bg-[#111417]">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#54C878]" />
-              <span className="text-xs font-semibold text-[#9DA4AA]">Model Engine Active</span>
+              <div className={clsx('w-1.5 h-1.5 rounded-full', isModelActive ? 'bg-[#54C878]' : 'bg-[#F59E0B]')} />
+              <span className="text-xs font-semibold text-[#9DA4AA]">
+                {isModelActive ? 'Model Engine Active' : 'Model Engine Offline'}
+              </span>
             </div>
           </div>
         </div>

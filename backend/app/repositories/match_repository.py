@@ -1,6 +1,6 @@
 """Repository for match database operations."""
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.orm_models import Match
@@ -25,7 +25,7 @@ class MatchRepository:
             .options(joinedload(Match.home_team), joinedload(Match.away_team))
             .order_by(Match.match_date.desc())
         )
-        count_stmt = select(Match)
+        count_stmt = select(func.count()).select_from(Match)
 
         if league_id is not None:
             stmt = stmt.where(Match.league_id == league_id)
@@ -38,7 +38,7 @@ class MatchRepository:
             stmt = stmt.where(cond)
             count_stmt = count_stmt.where(cond)
 
-        total = len(list(self.db.execute(count_stmt).scalars().all()))
+        total = self.db.execute(count_stmt).scalar_one()
         matches = list(self.db.execute(stmt.offset(offset).limit(limit)).unique().scalars().all())
         return matches, total
 

@@ -1,11 +1,12 @@
 {
   "name": "MatchIQ Model",
-  "version_tag": "logistic_regression-v20260828",
+  "version_tag": "logistic_regression-v20260829",
   "algorithm": "logistic_regression",
-  "training_date": "2026-08-28T23:08:09.657486+00:00",
-  "accuracy": 0.4824,
-  "f1_score": 0.4304,
-  "log_loss": 0.99,
+  "training_date": "2026-08-29T05:01:37.390525+00:00",
+  "accuracy": 0.5,
+  "f1_score": 0.478,
+  "log_loss": 0.9946,
+  "brier_score": 0.5952,
   "features": [
     "home_form_pts_last5",
     "home_form_wins_last5",

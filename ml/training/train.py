@@ -160,37 +160,47 @@ def build_models() -> dict:
     }
 
 
-def evaluate_model(name: str, model, X_test: np.ndarray, y_test: np.ndarray) -> dict:
-    """Evaluate a trained model and return metrics dict."""
-    y_pred = model.predict(X_test)
-    y_proba = model.predict_proba(X_test)
+def compute_brier_score(y_true: np.ndarray, y_proba: np.ndarray) -> float:
+    """Compute multi-class Brier score."""
+    n_classes = y_proba.shape[1]
+    y_onehot = np.eye(n_classes)[y_true]
+    return float(np.mean(np.sum((y_proba - y_onehot) ** 2, axis=1)))
 
-    acc = accuracy_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred, average="weighted")
-    ll = log_loss(y_test, y_proba)
+
+def evaluate_model(name: str, model, X_eval: np.ndarray, y_eval: np.ndarray, dataset_name: str = "Validation") -> dict:
+    """Evaluate a trained model and return metrics dict."""
+    y_pred = model.predict(X_eval)
+    y_proba = model.predict_proba(X_eval)
+
+    acc = accuracy_score(y_eval, y_pred)
+    f1 = f1_score(y_eval, y_pred, average="weighted")
+    ll = log_loss(y_eval, y_proba)
+    brier = compute_brier_score(y_eval, y_proba)
 
     report = classification_report(
-        y_test, y_pred, target_names=["HOME_WIN", "DRAW", "AWAY_WIN"], output_dict=True
+        y_eval, y_pred, target_names=["HOME_WIN", "DRAW", "AWAY_WIN"], output_dict=True
     )
 
     logger.info(f"\n{'='*50}")
-    logger.info(f"Model: {name}")
-    logger.info(f"  Accuracy:  {acc:.4f}")
-    logger.info(f"  F1 (wt):   {f1:.4f}")
-    logger.info(f"  Log Loss:  {ll:.4f}")
-    logger.info(f"\n{classification_report(y_test, y_pred, target_names=['HOME_WIN', 'DRAW', 'AWAY_WIN'])}")
+    logger.info(f"Model: {name} ({dataset_name} Set)")
+    logger.info(f"  Accuracy:    {acc:.4f}")
+    logger.info(f"  F1 (wt):     {f1:.4f}")
+    logger.info(f"  Log Loss:    {ll:.4f}")
+    logger.info(f"  Brier Score: {brier:.4f}")
+    logger.info(f"\n{classification_report(y_eval, y_pred, target_names=['HOME_WIN', 'DRAW', 'AWAY_WIN'])}")
 
     return {
         "name": name,
         "accuracy": round(acc, 4),
         "f1_score": round(f1, 4),
         "log_loss": round(ll, 4),
+        "brier_score": round(brier, 4),
         "classification_report": report,
     }
 
 
 def select_best_model(results: list[dict]) -> str:
-    """Select best model using weighted F1 and Log Loss composite score.
+    """Select best model using weighted F1 and Log Loss composite score on VALIDATION set.
 
     We do NOT select solely on accuracy because Draw is the minority class.
     The composite score rewards both discriminative power (F1) and
@@ -207,10 +217,10 @@ def select_best_model(results: list[dict]) -> str:
         norm_ll = (r["log_loss"] - min_ll) / ll_range  # 0=best, 1=worst
         score = r["f1_score"] * 0.6 + (1 - norm_ll) * 0.4
         scored.append((r["name"], score))
-        logger.info(f"  Composite score {r['name']}: {score:.4f}")
+        logger.info(f"  Validation Composite score {r['name']}: {score:.4f}")
 
     best = max(scored, key=lambda x: x[1])
-    logger.info(f"\n✓ Best model selected: {best[0]} (score: {best[1]:.4f})")
+    logger.info(f"\n✓ Best model selected on Validation set: {best[0]} (score: {best[1]:.4f})")
     return best[0]
 
 
@@ -233,6 +243,7 @@ def save_model(model, name: str, metrics: dict) -> None:
         "accuracy": metrics["accuracy"],
         "f1_score": metrics["f1_score"],
         "log_loss": metrics["log_loss"],
+        "brier_score": metrics.get("brier_score", 0.0),
         "features": FEATURE_NAMES,
     }
     with open(MODEL_DIR / "feature_metadata.json", "w") as f:
@@ -321,12 +332,12 @@ def train() -> None:
     X_test = test_df[FEATURE_NAMES].values
     y_test = test_df["target"].values.astype(int)
 
-    # 4. Train all models
-    models = build_models()
-    trained_models = {}
+    # 4. Train candidate models on Train set
+    candidate_models = build_models()
+    trained_candidates = {}
 
-    for name, model in models.items():
-        logger.info(f"\nTraining {name}...")
+    for name, model in candidate_models.items():
+        logger.info(f"\nTraining candidate model: {name}...")
         if name == "xgboost":
             model.fit(
                 X_train, y_train,
@@ -335,35 +346,44 @@ def train() -> None:
             )
         else:
             model.fit(X_train, y_train)
-        trained_models[name] = model
+        trained_candidates[name] = model
 
-    # 5. Evaluate on test set
-    logger.info("\n--- Model Evaluation on Test Set ---")
-    all_metrics = []
-    for name, model in trained_models.items():
-        metrics = evaluate_model(name, model, X_test, y_test)
-        all_metrics.append(metrics)
+    # 5. Evaluate candidate models on Validation set to select the winner
+    logger.info("\n--- Candidate Selection on Validation Set ---")
+    val_metrics = []
+    for name, model in trained_candidates.items():
+        metrics = evaluate_model(name, model, X_val, y_val, dataset_name="Validation")
+        val_metrics.append(metrics)
 
-    # 6. Model selection
-    logger.info("\n--- Model Selection ---")
-    best_name = select_best_model(all_metrics)
-    best_model = trained_models[best_name]
-    best_metrics = next(m for m in all_metrics if m["name"] == best_name)
+    best_name = select_best_model(val_metrics)
 
-    # 7. Save
-    save_model(best_model, best_name, {
-        **best_metrics,
-        "all_models": all_metrics,
+    # 6. Retrain selected model on combined (Train + Validation) data
+    logger.info(f"\n--- Retraining Winner ({best_name}) on Train + Validation Set ---")
+    X_train_val = np.vstack([X_train, X_val])
+    y_train_val = np.concatenate([y_train, y_val])
+
+    final_model = build_models()[best_name]
+    final_model.fit(X_train_val, y_train_val)
+
+    # 7. Evaluate final retrained model ONCE on untouched Test set
+    logger.info(f"\n--- Final Evaluation of {best_name} on Untouched Test Set ---")
+    test_metrics = evaluate_model(best_name, final_model, X_test, y_test, dataset_name="Test")
+
+    # 8. Save artifacts
+    save_model(final_model, best_name, {
+        **test_metrics,
+        "validation_models": val_metrics,
         "train_size": len(train_df),
         "val_size": len(val_df),
         "test_size": len(test_df),
     })
 
     logger.info("\n✓ Training pipeline complete!")
-    logger.info(f"  Best model: {best_name}")
-    logger.info(f"  Accuracy:   {best_metrics['accuracy']:.4f}")
-    logger.info(f"  F1 (wt):    {best_metrics['f1_score']:.4f}")
-    logger.info(f"  Log Loss:   {best_metrics['log_loss']:.4f}")
+    logger.info(f"  Best model:  {best_name}")
+    logger.info(f"  Accuracy:    {test_metrics['accuracy']:.4f}")
+    logger.info(f"  F1 (wt):     {test_metrics['f1_score']:.4f}")
+    logger.info(f"  Log Loss:    {test_metrics['log_loss']:.4f}")
+    logger.info(f"  Brier Score: {test_metrics['brier_score']:.4f}")
 
 
 if __name__ == "__main__":

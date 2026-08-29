@@ -158,6 +158,7 @@ def _rolling_team_features(df: pd.DataFrame, team_id: int) -> pd.DataFrame:
     tdf["avg_shots"] = rolling_mean("shots", 10)
     tdf["avg_shots_on_target"] = rolling_mean("sot", 10)
     tdf["avg_xg"] = rolling_mean("xg", 10)
+    tdf["cum_pts"] = tdf["pts"].shift(1).expanding().sum().fillna(0.0)
 
     # Venue-specific features
     home_df = tdf[tdf["is_home"] == True].copy()  # noqa: E712
@@ -280,11 +281,11 @@ def compute_features(df: pd.DataFrame, standings: pd.DataFrame | None = None) ->
                 return default
             return feat_df.loc[mid, feat_name] if feat_name in feat_df.columns else default
 
-        # Home standings features
+        # Home/Away standings & points features
         home_pos = 10.0
-        home_pts = 0.0
+        home_pts = get_feat(hf, "cum_pts", 0.0)
         away_pos = 10.0
-        away_pts = 0.0
+        away_pts = get_feat(af, "cum_pts", 0.0)
 
         if standings is not None:
             # Get standing that was valid before this match date

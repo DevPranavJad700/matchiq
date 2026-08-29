@@ -2,20 +2,23 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (including curl for health checks)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc && rm -rf /var/lib/apt/lists/*
+    libpq-dev gcc curl && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application backend code
+# Copy application code, alembic configs, and scripts
 COPY backend/app/ ./app/
+COPY backend/alembic/ ./alembic/
+COPY backend/alembic.ini ./alembic.ini
+COPY backend/entrypoint.sh ./entrypoint.sh
+COPY scripts/ ./scripts/
+COPY ml/ ./ml/
 
-# Copy ML model artifacts if present, ensure directory exists
-RUN mkdir -p ml/models
-COPY ml/models/ ./ml/models/
+RUN chmod +x ./entrypoint.sh
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -23,4 +26,4 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["/bin/sh", "./entrypoint.sh"]
