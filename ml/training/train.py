@@ -23,7 +23,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import joblib
 import numpy as np
@@ -41,6 +41,7 @@ from sklearn.metrics import (
     classification_report,
     f1_score,
     log_loss,
+    recall_score,
 )
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -320,20 +321,37 @@ def evaluate_model(
     }
 
 
-def tune_draw_threshold(y_val: np.ndarray, y_proba_val: np.ndarray) -> float:
-    """Find the optimal Draw threshold theta in [0.20, 0.35] that maximizes Macro F1."""
-    best_theta = 0.3333
-    best_score = 0.0
-    for theta in np.linspace(0.20, 0.35, 31):
-        y_pred = np.argmax(y_proba_val, axis=1)
-        draw_mask = y_proba_val[:, 1] >= theta
+def sweep_draw_thresholds(y_true: np.ndarray, y_proba: np.ndarray) -> List[Dict[str, Any]]:
+    """
+    Perform a sweep across theta in [0.20, 0.35] to document the accuracy vs. draw-recall trade-off
+    and demonstrate why Bayes-optimal argmax is selected for discrete predictions.
+    """
+    sweep_results = []
+    for theta in np.arange(0.20, 0.36, 0.01):
+        theta = round(float(theta), 2)
+        y_pred = np.argmax(y_proba, axis=1)
+        draw_mask = y_proba[:, 1] >= theta
         y_pred[draw_mask] = 1
-        score = f1_score(y_val, y_pred, average="macro", zero_division=0)
-        if score > best_score:
-            best_score = score
-            best_theta = theta
-    logger.info(f"Optimal validation draw threshold: θ = {best_theta:.3f} (Macro F1 = {best_score:.4f})")
-    return float(best_theta)
+
+        acc = accuracy_score(y_true, y_pred)
+        macro_f1 = f1_score(y_true, y_pred, average="macro", zero_division=0)
+        wt_f1 = f1_score(y_true, y_pred, average="weighted", zero_division=0)
+        d_rec = recall_score(y_true, y_pred, labels=[1], average=None, zero_division=0)[0]
+        h_rec = recall_score(y_true, y_pred, labels=[0], average=None, zero_division=0)[0]
+        a_rec = recall_score(y_true, y_pred, labels=[2], average=None, zero_division=0)[0]
+        counts = [int(c) for c in np.bincount(y_pred, minlength=3)]
+
+        sweep_results.append({
+            "theta": theta,
+            "accuracy": round(float(acc), 4),
+            "macro_f1": round(float(macro_f1), 4),
+            "weighted_f1": round(float(wt_f1), 4),
+            "draw_recall": round(float(d_rec), 4),
+            "home_recall": round(float(h_rec), 4),
+            "away_recall": round(float(a_rec), 4),
+            "predicted_counts": {"home": counts[0], "draw": counts[1], "away": counts[2]},
+        })
+    return sweep_results
 
 
 def tune_blend_weight(
@@ -483,10 +501,10 @@ def train() -> None:
 
     best_name = select_best_model(val_metrics)
 
-    # 7. Tune draw threshold and blend weight on validation set
+    # 7. Sweep draw threshold and blend weight on validation set
     best_val_model = calibrated_models[best_name]
     best_val_proba = best_val_model.predict_proba(X_val)
-    optimal_draw_threshold = tune_draw_threshold(y_val, best_val_proba)
+    val_theta_sweep = sweep_draw_thresholds(y_val, best_val_proba)
     best_blend_w, best_val_blend_rps, blend_sweep = tune_blend_weight(y_val, best_val_proba, dc_val_probs)
 
     # 8. Retrain winner on combined Train + Validation data
@@ -512,10 +530,10 @@ def train() -> None:
         X_test,
         y_test,
         dataset_name="Test",
-        draw_threshold=optimal_draw_threshold,
     )
     baseline_metrics = evaluate_baseline(y_test, dataset_name="Test")
     market_metrics = evaluate_market_baseline(test_df, dataset_name="Test")
+    test_theta_sweep = sweep_draw_thresholds(y_test, cal_final.predict_proba(X_test))
 
     # Evaluate Dixon-Coles on Test set
     dc_test_probs = np.array([dc_engine.predict_proba(r["home_team_name"], r["away_team_name"]) for _, r in test_df.iterrows()])
@@ -568,7 +586,7 @@ def train() -> None:
         "log_loss": test_metrics["log_loss"],
         "brier_score": test_metrics["brier_score"],
         "rps": test_metrics["rps"],
-        "optimal_draw_threshold": optimal_draw_threshold,
+        "optimal_decision_rule": "argmax (Bayes-optimal 0-1 loss)",
         "features": FEATURE_NAMES,
     }
     with open(MODEL_DIR / "feature_metadata.json", "w") as f:
@@ -592,10 +610,12 @@ def train() -> None:
             "brier_score": round(float(blend_brier), 4),
             "rps": round(float(blend_rps), 4),
         },
-        "optimal_draw_threshold": round(optimal_draw_threshold, 4),
+        "optimal_decision_rule": "argmax (Bayes-optimal 0-1 loss)",
         "optimal_blend_weight_ml": round(float(best_blend_w), 2),
         "optimal_blend_weight_dixon_coles": round(float(1.0 - best_blend_w), 2),
         "blend_validation_sweep": blend_sweep,
+        "draw_threshold_validation_sweep": val_theta_sweep,
+        "draw_threshold_test_sweep": test_theta_sweep,
         "validation_models": val_metrics,
         "train_size": len(train_df),
         "val_size": len(val_df),
@@ -670,7 +690,7 @@ def train() -> None:
     logger.info(f"  Test Log Loss:    {test_metrics['log_loss']:.4f} (Market Baseline: {market_metrics.get('log_loss', 0.0):.4f})")
     logger.info(f"  Test Brier Score: {test_metrics['brier_score']:.4f}")
     logger.info(f"  Test RPS:         {test_metrics['rps']:.4f} (Market Baseline: {market_metrics.get('rps', 0.0):.4f})")
-    logger.info(f"  Draw Recall:      {test_metrics.get('draw_recall_tuned', 0.0):.4f} (Tuned θ={optimal_draw_threshold:.3f})")
+    logger.info("  Decision Rule:    argmax (Bayes-optimal 0-1 loss minimizing)")
 
 
 if __name__ == "__main__":

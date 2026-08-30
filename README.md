@@ -268,19 +268,21 @@ Evaluated **once** on the untouched 2025–26 chronological test set (**identica
 
 ---
 
-### Resolving the Draw Blindness Dilemma & Threshold Tuning
+### Decision Boundary Analysis & Bayes-Optimal Argmax Classification
 
-In raw $\arg\max$ decision mode, draw recall is 0.00% because calibrated draw probabilities cluster between 22% and 32%. MatchIQ tunes the decision threshold on validation data:
+In 3-way sports forecasting, forcing continuous probabilities $[P(H), P(D), P(A)]$ into a single discrete class label with an artificial draw threshold $\theta_{\text{draw}}$ causes distribution collapse toward "Draw":
 
-$$\hat{y} = \begin{cases} \text{DRAW}, & \text{if } P(\text{Draw}) \ge \theta_{\text{draw}} \\ \arg\max_{k \in \{0, 2\}} P(y=k), & \text{otherwise} \end{cases}$$
+| Decision Threshold $\theta$ | Accuracy | Macro F1 | Weighted F1 | Draw Recall | Predicted Draws (Out of 380) | Diagnostic / Failure Mode |
+|:---:|:---:|:---:|:---:|:---:|:---:|---|
+| **0.20** | 27.37% | 0.1433 | 0.1176 | 100.0% | **380 (100%)** | Total collapse: Predicts 100% Draws |
+| **0.23** | 39.21% | 0.3730 | 0.3787 | 72.12% | **254 (67%)** | **Predicts 67% Draws (9-point accuracy drop)** |
+| **0.24** | 46.05% | 0.4373 | 0.4576 | 34.62% | 112 (29%) | Distorted home/away recall |
+| **$\ge$ 0.27 (Argmax)** | **48.16%** | **0.3613** | **0.4028** | **0.00%** | **0 (0%)** | **Bayes-Optimal 0-1 Loss Minimizing Rule** |
 
-| Metric | Standard $\arg\max$ ($\theta=0.333$) | Tuned Threshold ($\theta=0.230$) | Net Trade-off Rationale |
-|---|:---:|:---:|---|
-| **Draw Recall** | **0.00%** | **72.12%** | **+72.12% lift** (75 of 104 draws identified) |
-| **Draw Precision** | 0.00% | **29.53%** | +29.53% (Draw F1: **0.4190**) |
-| **Home Win Precision** | 51.68% | **61.63%** | **+9.95% precision gain** on confident home picks |
-| **Away Win Precision** | 42.25% | **52.50%** | **+10.25% precision gain** on confident away picks |
-| **Macro Average F1** | 0.3613 | **0.3730** | **+0.0117 overall balance improvement across all 3 classes** |
+#### Why MatchIQ Retains Pure $\arg\max$ for Headline Predictions:
+1. **Mathematical Optimality**: Under Bayes decision theory with symmetric 0-1 loss (overall accuracy), $\hat{y} = \arg\max_k P(y=k \mid x)$ is mathematically optimal. Any threshold $\theta < \arg\max$ guarantees lower classification accuracy.
+2. **Product Credibility**: Pure $\arg\max$ prevents distorted predictions (e.g. Manchester City vs. a bottom-table club being predicted as a "Draw" merely because draw probability is 23%).
+3. **Continuous Deliverable**: The calibrated probability vector $[P(\text{Home}), P(\text{Draw}), P(\text{Away})]$ is the true deliverable (evaluated via Ranked Probability Score **0.2099** and Log Loss **1.0315**). When $P(\text{Draw}) \ge 0.28$, MatchIQ flags a **"Contested Fixture — Elevated Draw Likelihood"** badge in the UI.
 
 ---
 

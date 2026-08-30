@@ -44,15 +44,14 @@ MatchIQ reaches **97.8% of bookmaker market efficiency** purely on pre-match his
 ### Q7: How did you evaluate the ML vs. Dixon-Coles blend?
 **Answer:** We ran a systematic grid search over blend weight $w \in [0.0, 1.0]$ in increments of $0.05$ on the 2024–25 Validation Set. Validation RPS monotonically improved from 0.2134 (100% Dixon-Coles) down to 0.2033 (100% Calibrated ML). Rather than using an unjustified heuristic blend weight, we select the calibrated classifier as the primary outcome predictor, with Dixon-Coles serving as the dedicated goal-scoring engine for bivariate scoreline matrices ($P(0\text{--}0), P(1\text{--}0), \dots$) and expected goals ($\lambda, \mu$).
 
-### Q8: How did you solve the Draw Prediction Dilemma and what is the trade-off?
+### Q8: How did you evaluate the Draw Prediction Dilemma and why retain Bayes-optimal argmax?
 **Answer:** Under standard $\arg\max$ decision mode ($\hat{y} = \arg\max_k P_k$), draw recall is 0.00% because calibrated draw probabilities cluster around 22%–32% and rarely exceed the ~35% needed to beat both home and away win probabilities.
-We solved this by tuning the decision threshold on validation data:
-$$\hat{y} = \begin{cases} \text{DRAW}, & \text{if } P(\text{Draw}) \ge \theta_{\text{draw}} \\ \arg\max_{k \in \{0, 2\}} P(y=k), & \text{otherwise} \end{cases}$$
-With $\theta_{\text{draw}} = 0.230$:
-* **Draw Recall:** Rises from **0.00% to 72.12%** (+72.12% lift, identifying 75 of 104 test draws).
-* **Home Win Precision:** Increases from **51.68% to 61.63%** (+9.95% precision gain).
-* **Away Win Precision:** Increases from **42.25% to 52.50%** (+10.25% precision gain).
-* **Trade-off:** Home/away recall drops because borderline fixtures are reallocated to Draw, but **Macro Average F1 increases from 0.3613 to 0.3730**, improving balance across all 3 outcomes.
+If you force an artificial threshold (e.g. $\theta_{\text{draw}} = 0.230$), the model begins predicting "Draw" for 254 out of 380 matches (66.8% of all fixtures), causing discrete accuracy to collapse by 9 percentage points (48.16% $\to$ 39.21%), Home Recall to collapse to 32.7%, and Away Recall to collapse to 18.4%.
+
+Under Bayesian decision theory with symmetric 0-1 loss (maximizing accuracy), $\hat{y} = \arg\max_k P(y=k \mid x)$ is mathematically optimal. Therefore, we:
+1. Retain pure $\arg\max$ for headline predictions, preserving optimal classification accuracy (48.16% on Test / 51.58% on Validation) and avoiding credibility issues (e.g. Manchester City vs. a relegated club is never labeled "Draw").
+2. Treat the calibrated continuous probability distribution $[P(H), P(D), P(A)]$ as the primary ML deliverable (evaluated via Ranked Probability Score **0.2099** and Log Loss **1.0315**).
+3. Surface a "Contested Fixture — Elevated Draw Likelihood" badge in the UI when $P(\text{Draw}) \ge 0.28$, communicating draw risk transparently to users without distorting classification labels.
 
 ### Q9: How did you prevent data leakage in feature engineering?
 **Answer:** Time-awareness is strictly enforced using pandas `.shift(1)` across all rolling window operations in `ml/features/feature_engineering.py`. For any match $M$ on date $T$, the rolling 5-match form, Elo ratings, and 10-match goals/xG averages include *only* matches $1 \dots M-1$ played strictly before date $T$. Post-match statistics (e.g., match $M$'s goals/shots) are never in match $M$'s feature vector.

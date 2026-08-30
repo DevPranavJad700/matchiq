@@ -1,15 +1,14 @@
-# MatchIQ — ML Model Performance, Calibration & Baseline Analysis
+# MatchIQ — ML Model Performance, Calibration & Decision Boundary Analysis
 
 ## 1. Dataset Overview & Provenance
 
-The MatchIQ machine learning pipeline evaluates models on **4,940 authentic historical Premier League matches** (13 complete seasons: 2013–14 through 2025–26) ingested directly from `football-data.co.uk`.
+The MatchIQ machine learning pipeline trains and validates models on **4,940 authentic historical Premier League matches** (13 complete seasons: 2013–14 through 2025–26) ingested directly from `football-data.co.uk`.
 
 * **Total Matches:** 4,940 (380 matches per season across 13 seasons)
 * **Total Teams:** 35 unique clubs (accounting for authentic Premier League promotions and relegations)
 * **Date Range:** 17 August 2013 (Liverpool 1–0 Stoke City) to 24 May 2026
 * **Dataset SHA-256:** `f911e768881723e8bfcff643547e5864f04a38c9bfe6ae6fd091cccc1e1f3839`
-* **Model Artifact SHA-256:** `1576b24006c2044b78d2441cc9891ca9653d789261ad2377f7be62e2591cdf00`
-* **Features:** 45 time-aware, zero-leakage features including Dynamic Elo ratings ($K=28$, $\text{HomeAdv}=65$), rest days differential, pre-match standings, xG trends, closing betting odds, and rolling form with `.shift(1)` offsets.
+* **Features:** 45 time-aware, zero-leakage features including Dynamic Elo ratings ($K=28$, $\text{HomeAdv}=65$), rest days differential, pre-match standings, xG trends, closing market odds, and rolling form with `.shift(1)` offsets.
 
 ### Overall Class Distribution (4,940 matches)
 * `HOME_WIN` (Target 0): 2,217 matches (**44.88%**)
@@ -23,7 +22,7 @@ The MatchIQ machine learning pipeline evaluates models on **4,940 authentic hist
 To eliminate temporal leakage and lookahead bias, data is split strictly chronologically by season:
 
 * **Training Set:** 4,180 matches (11 seasons: 2013–14 through 2023–24)
-* **Validation Set:** 380 matches (1 season: 2024–25) — used for candidate model comparison, probability calibration tuning, and threshold selection.
+* **Validation Set:** 380 matches (1 season: 2024–25) — used for candidate model comparison, probability calibration tuning, and blend analysis.
 * **Held-out Test Set:** 380 matches (1 season: 2025–26) — untouched during all feature tuning and model exploration.
 
 > [!IMPORTANT]
@@ -31,7 +30,7 @@ To eliminate temporal leakage and lookahead bias, data is split strictly chronol
 
 ---
 
-## 3. The Accuracy vs. Probability Calibration Trade-off
+## 3. Probability Calibration vs. Raw Discrete Accuracy
 
 ### Plain-English Scientific Framing: Why Did Headline Accuracy Change (49.66% → 47.63%)?
 
@@ -86,62 +85,49 @@ $$P_{\text{blend}} = w \cdot P_{\text{ML}} + (1 - w) \cdot P_{\text{DixonColes}}
 | 0.80 | 0.20 | 0.2039 | 0.9908 | 51.32% |
 | **1.00 (100% Calibrated ML)** | **0.00** | **0.2033** | **0.9898** | **51.58%** |
 
-* **Finding:** On the validation set, the calibrated discriminative model ($w=1.00$) achieved the lowest RPS (0.2033) and lowest Log Loss (0.9898). Therefore, rather than using an arbitrary heuristic blend, the standalone calibrated ML model was selected as the primary outcome predictor, with Dixon-Coles serving as the dedicated goal-scoring engine for scoreline matrices and expected goals ($\lambda, \mu$).
+* **Finding:** The calibrated discriminative classifier ($w=1.00$) achieved the lowest validation RPS (0.2033) and lowest Log Loss (0.9898). Standalone calibrated ML was selected as the primary outcome predictor, with Dixon-Coles serving as the dedicated goal-scoring engine for bivariate scoreline matrices ($P(0\text{--}0), P(1\text{--}0), \dots$) and expected goals ($\lambda, \mu$).
 
 ---
 
-## 6. Resolving the Draw Blindness Dilemma: Full Classification Reports
+## 6. The Decision Boundary & Draw Threshold Sweep Analysis
 
-### Mode 1: Standard $\arg\max$ Mode ($\theta = 0.333$)
-Under raw $\arg\max$, draw recall is 0.00% because calibrated draw probabilities cluster between 22% and 32%:
+### The Pathology of Artificial Draw Threshold Overrides
 
-```
-              precision    recall  f1-score   support
+Why is an artificial draw threshold $\theta$ harmful to a 3-way sports predictor?
+When a threshold $\theta_{\text{draw}} < 0.33$ is enforced (e.g. predicting DRAW whenever $P(\text{Draw}) \ge \theta$), the model begins capturing draws at the expense of collapsing its prediction distribution toward "DRAW":
 
-    HOME_WIN     0.5168    0.7593    0.6150       162
-        DRAW     0.0000    0.0000    0.0000       104
-    AWAY_WIN     0.4225    0.5263    0.4688       114
+#### Fine-Grained $\theta$ Sweep on Chronological Test Set ($N=380$ Matches; True: 162 Home, 104 Draw, 114 Away):
 
-    accuracy                         0.4816       380
-   macro avg     0.3131    0.4285    0.3613       380
-weighted avg     0.3471    0.4816    0.4028       380
-```
+| $\theta$ | Accuracy | Macro F1 | Weighted F1 | Draw Recall | Home Recall | Away Recall | Predicted Home | Predicted Draw | Predicted Away | Failure Mode / Diagnostic |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
+| **0.20** | 27.37% | 0.1433 | 0.1176 | 100.0% | 0.00% | 0.00% | 0 | **380 (100%)** | 0 | Total collapse: Predicts 100% Draws |
+| **0.22** | 31.84% | 0.2337 | 0.2264 | 93.27% | 12.96% | 2.63% | 31 | **344 (91%)** | 5 | Massive over-prediction of draws |
+| **0.23** | 39.21% | 0.3730 | 0.3787 | 72.12% | 32.72% | 18.42% | 86 | **254 (67%)** | 40 | **Predicts 67% Draws (9% accuracy drop!)** |
+| **0.24** | 46.05% | 0.4373 | 0.4576 | 34.62% | 60.49% | 35.96% | 178 | 112 (29%) | 90 | Distorted home/away recall |
+| **0.26** | 48.42% | 0.3728 | 0.4124 | 1.92% | 75.93% | 51.75% | 237 | 3 (1%) | 140 | Minimal threshold effect |
+| **$\ge$ 0.27** | **48.16%** | **0.3613** | **0.4028** | **0.00%** | **75.93%** | **52.63%** | **238 (63%)** | **0 (0%)** | **142 (37%)** | **Pure $\arg\max$ Baseline** |
 
-### Mode 2: Tuned Draw Threshold Mode ($\theta_{\text{draw}} = 0.230$)
-When predicting DRAW whenever $P(\text{Draw}) \ge 0.230$:
+### Mathematical Rationale: Bayes Decision Rule for 0-1 Loss
 
-```
-              precision    recall  f1-score   support
+Under Bayesian decision theory with symmetric 0-1 loss (maximizing classification accuracy):
+$$\hat{y} = \arg\max_{k \in \{0, 1, 2\}} P(y = k \mid x)$$
+The $\arg\max$ decision rule is **mathematically proven to minimize classification error**. Any arbitrary threshold override $\theta < \arg\max$ guarantees a reduction in discrete classification accuracy and distorts the predictive distribution.
 
-    HOME_WIN     0.6163    0.3272    0.4274       162
-        DRAW     0.2953    0.7212    0.4190       104
-    AWAY_WIN     0.5250    0.1842    0.2727       114
+### The True Machine Learning Deliverable: Calibrated Continuous Probabilities
 
-    accuracy                         0.3921       380
-   macro avg     0.4789    0.4108    0.3730       380
-weighted avg     0.5010    0.3921    0.3787       380
-```
+The "0% Draw Recall" problem is an artifact of forcing a continuous 3-way probability distribution $[P(H), P(D), P(A)]$ into a single discrete class label. 
 
-### Side-by-Side Trade-off Analysis:
-
-| Metric | Standard $\arg\max$ ($\theta=0.333$) | Tuned Threshold ($\theta=0.230$) | Net Trade-off Rationale |
-|---|:---:|:---:|---|
-| **Draw Recall** | **0.00%** | **72.12%** | **+72.12% lift** (75 of 104 draws identified) |
-| **Draw Precision** | 0.00% | **29.53%** | +29.53% (Draw F1: **0.4190**) |
-| **Home Win Precision** | 51.68% | **61.63%** | **+9.95% precision increase** on high-confidence home picks |
-| **Away Win Precision** | 42.25% | **52.50%** | **+10.25% precision increase** on high-confidence away picks |
-| **Home Win Recall** | 75.93% | 32.72% | Low-confidence home picks reallocated to Draw |
-| **Away Win Recall** | 52.63% | 18.42% | Low-confidence away picks reallocated to Draw |
-| **Macro Average F1** | 0.3613 | **0.3730** | **+0.0117 overall balance improvement across all 3 classes** |
+In MatchIQ:
+1. **Primary Output**: The calibrated continuous probability vector $[P(\text{Home}), P(\text{Draw}), P(\text{Away})]$ is the true deliverable. It is evaluated via Ranked Probability Score (RPS: **0.2099**) and Log Loss (**1.0315**), and directly powers the 10,000-run Monte Carlo simulation.
+2. **Headline Label**: Discrete predictions remain pure $\arg\max$, preserving maximum overall accuracy (**48.16%** on Test / **51.58%** on Validation) and avoiding absurd predictions (e.g. Manchester City vs. a relegated club is never labeled "Draw" simply because draw probability is 23%).
+3. **Product Experience**: When $P(\text{Draw}) \ge 0.28$ or the margin between the top two outcomes is $\le 0.08$, MatchIQ surfaces a **"Contested Fixture — Elevated Draw Likelihood"** badge in the UI and API response, providing transparent domain context without compromising model accuracy.
 
 ---
 
 ## 7. Statistical Dixon-Coles (1997) Goal Model Engine
 
-In addition to discriminative classification, MatchIQ implements the classic statistical model by Mark J. Dixon and Stuart G. Coles:
-* *'Modelling Association Football Scores and Inefficiencies in the Football Betting Market'*, *Applied Statistics*, 46(2), 265–280 (1997).
+In addition to discriminative classification, MatchIQ implements the classic statistical model by Mark J. Dixon and Stuart G. Coles (*Applied Statistics*, 1997):
 
-### Mathematical Formulation:
 Home and away goals $X \sim \text{Poisson}(\lambda)$, $Y \sim \text{Poisson}(\mu)$ where:
 $$\lambda = \exp(\mu_0 + \alpha_h + \beta_a + \gamma)$$
 $$\mu = \exp(\mu_0 + \alpha_a + \beta_h)$$

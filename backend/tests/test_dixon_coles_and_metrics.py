@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from ml.models.dixon_coles import DixonColesEngine
-from ml.training.train import compute_rps, tune_draw_threshold
+from ml.training.train import compute_rps, sweep_draw_thresholds
 
 
 def test_compute_rps_perfect_prediction():
@@ -64,8 +64,8 @@ def test_dixon_coles_engine_fit_and_predict():
     assert all("score" in s and "probability" in s for s in scorelines)
 
 
-def test_tune_draw_threshold():
-    """tune_draw_threshold finds a threshold in the [0.20, 0.35] window that maximizes Macro F1."""
+def test_sweep_draw_thresholds():
+    """sweep_draw_thresholds evaluates a sweep across theta and records per-class statistics."""
     y_val = np.array([0, 1, 2, 1, 0, 2, 1, 0, 1, 2])
     y_proba_val = np.array([
         [0.60, 0.25, 0.15],
@@ -79,5 +79,8 @@ def test_tune_draw_threshold():
         [0.35, 0.34, 0.31],
         [0.15, 0.25, 0.60],
     ])
-    opt_theta = tune_draw_threshold(y_val, y_proba_val)
-    assert 0.20 <= opt_theta <= 0.35
+    sweep = sweep_draw_thresholds(y_val, y_proba_val)
+    assert len(sweep) > 0
+    assert "theta" in sweep[0]
+    assert "draw_recall" in sweep[0]
+    assert "predicted_counts" in sweep[0]

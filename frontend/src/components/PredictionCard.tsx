@@ -90,14 +90,21 @@ export function PredictionCard({ prediction, compact = false }: PredictionCardPr
       {!compact && (
         <div className="mt-5 pt-4 border-t border-[var(--border)] flex items-center justify-between">
           <div>
-            <p className="text-[#9DA4AA] text-xs font-semibold uppercase tracking-wider">Predicted Match Outcome</p>
+            <div className="flex items-center gap-2">
+              <p className="text-[#9DA4AA] text-xs font-semibold uppercase tracking-wider">Predicted Match Outcome</p>
+              {probabilities.draw >= 0.28 && predicted_result !== 'DRAW' && (
+                <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                  Elevated Draw Risk ({Math.round(probabilities.draw * 100)}%)
+                </span>
+              )}
+            </div>
             <p className="text-[#F4F5F2] font-bold text-lg mt-0.5">
               <span>{resultLabels[predicted_result]} — {Math.round(maxProb * 100)}%</span>
             </p>
           </div>
           <div className="text-right">
             <p className="text-[#5C636A] text-xs font-medium">Model Engine</p>
-            <p className="text-[#9DA4AA] text-xs font-semibold mt-0.5">{prediction.model_version || 'XGBoost v1.2'}</p>
+            <p className="text-[#9DA4AA] text-xs font-semibold mt-0.5">{prediction.model_version || 'Calibrated Classifier'}</p>
           </div>
         </div>
       )}
