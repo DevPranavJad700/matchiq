@@ -1,60 +1,61 @@
 # Model Card — MatchIQ Premier League Predictor
 
 ## Model Details
-- **Model Name**: MatchIQ Premier League Match Predictor
-- **Version**: `random_forest-v20260829_090156`
-- **Model Architecture**: Random Forest Classifier (`n_estimators=300`, `max_depth=12`, `min_samples_split=8`, `random_state=42`)
-- **Framework**: `scikit-learn` v1.8.0
-- **Training Timestamp**: 2026-08-29T09:01:56 UTC
-- **Input Features**: 45 engineered features (Dynamic Elo with $K=28$ and Home Advantage $+65$, rest days differential, rolling form with `.shift(1)` offsets, xG differentials, venue win rates, and pre-match standings).
-- **Dataset Checksum (SHA-256)**: `ed8a946781ea36b04229e48f27f66426d436f77bafb21bfd7810f44471a5f546`
-- **Model Artifact Checksum (SHA-256)**: `c40c945aaaa31a5901e0e166241a1ee8fe2ec280a08926dadabed80ff169be41`
+- **Model Name**: MatchIQ Premier League Match Predictor & Dixon-Coles Statistical Engine
+- **Version**: `logistic_regression-v20260830`
+- **Model Architecture**: Calibrated Logistic Classifier (`CalibratedClassifierCV` with sigmoid Platt scaling, $C=0.2$, balanced class weights) + Statistical Dixon-Coles (1997) Goal Poisson Engine ($\xi=0.0019$, $\rho=-0.0819$)
+- **Framework**: `scikit-learn` v1.8.0, `scipy` v1.15.0
+- **Input Features**: 45 engineered features (Dynamic Elo with $K=28$ and Home Advantage $+65$, rest days differential, rolling form with `.shift(1)` offsets, xG differentials, closing market odds, venue win rates, and pre-match standings).
+- **Dataset Checksum (SHA-256)**: `f911e768881723e8bfcff643547e5864f04a38c9bfe6ae6fd091cccc1e1f3839`
+- **Model Artifact Checksum (SHA-256)**: `1576b24006c2044b78d2441cc9891ca9653d789261ad2377f7be62e2591cdf00`
 
 ---
 
 ## Intended Use
-- **Primary Use Case**: Predicting 3-way match outcome probabilities (`HOME_WIN`, `DRAW`, `AWAY_WIN`) for Premier League fixtures based on strictly historical performance metrics available prior to kick-off.
-- **Secondary Use Case**: Providing feature-level reasoning via SHAP TreeExplainer and powering 10,000-run Monte Carlo seasonal simulations.
+- **Primary Use Case**: Predicting calibrated 3-way match outcome probabilities (`HOME_WIN`, `DRAW`, `AWAY_WIN`) and bivariate exact scorelines for Premier League fixtures based on strictly historical performance metrics available prior to kick-off.
+- **Secondary Use Case**: Providing feature-level reasoning via SHAP/coefficient attribution and powering 10,000-run Monte Carlo seasonal simulations.
 - **Out-of-Scope Use Cases**: In-play micro-betting, financial trading, or deterministic outcome guarantees.
 
 ---
 
 ## Evaluation & Validation Protocol
 To eliminate data contamination and temporal leakage:
-1. **Chronological Splitting**: Data (4,940 matches, 13 seasons) is split chronologically into **Train (70%, 3,458 matches)**, **Validation (15%, 741 matches)**, and **Test (15%, 741 matches)**.
-2. **Validation Candidate Selection**: Candidate models (Logistic Regression, Random Forest, XGBoost, Voting Ensemble) are trained on the Train set and evaluated on the Validation set using a composite score balancing weighted F1 and Log Loss calibration.
-3. **Combined Retraining**: The winning Random Forest candidate is retrained on combined `Train + Validation` data (4,199 matches).
-4. **Untouched Test Evaluation**: The retrained model is evaluated **once** on the held-out Test set (741 matches).
+1. **Chronological Splitting**: Data (4,940 matches, 13 seasons) is split chronologically into **Train (4,180 matches)**, **Validation (380 matches: 2024–25 season)**, and **Test (380 matches: 2025–26 season)**.
+2. **Candidate Selection with Calibration**: Candidate models (Logistic Regression, Random Forest, XGBoost, Voting Ensemble) are trained with 5-fold `CalibratedClassifierCV` on the Train set and evaluated on the Validation set using a multi-metric composite score balancing Weighted F1, Log Loss, and Ranked Probability Score (RPS).
+3. **Combined Retraining**: The winning calibrated candidate is retrained on combined `Train + Validation` data (4,560 matches).
+4. **Untouched Test Evaluation**: The retrained model is evaluated **once** on the held-out Test set (380 matches) alongside closing betting market odds and Dixon-Coles goal modeling benchmarks.
 
 ---
 
-## Official Test Set Metrics (Source-of-Truth)
+## Official Test Set Benchmark Metrics
 
-| Metric | Score | Baseline (Naive Majority) | Description |
-|---|:---:|:---:|---|
-| **Accuracy** | **49.66%** | 41.70% | Overall top-1 classification accuracy (+7.96% lift) |
-| **Weighted F1 Score** | **0.4168** | 0.2454 | F1 score weighted across all 3 classes (+0.1714 lift) |
-| **Log Loss** | **1.0226** | 1.0848 | Multi-class cross-entropy loss (-0.0622 improvement) |
-| **Brier Score** | **0.6134** | 0.6574 | Mean squared probability error (-0.0440 improvement) |
-
-### Per-Class Performance (Test Set: 741 Matches)
-
-| Class | Precision | Recall | F1-Score | Support |
-|---|:---:|:---:|:---:|:---:|
-| **HOME_WIN** | 0.50 | 0.80 | 0.62 | 309 |
-| **DRAW** | 0.00 | 0.00 | 0.00 | 194 |
-| **AWAY_WIN** | 0.48 | 0.51 | 0.50 | 238 |
-| **Macro Average** | 0.33 | 0.44 | 0.37 | 741 |
-| **Weighted Average** | 0.37 | 0.50 | 0.42 | 741 |
+| Predictor / Architecture | Accuracy (argmax) | Weighted F1 | Log Loss | Brier Score | Ranked Prob Score (RPS) | Performance Relative to Market |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Naive Majority Class Baseline** (Always Home) | 42.63% | 0.2548 | 1.0846 | 0.6565 | 0.2279 | 61.8% efficiency |
+| **Dixon-Coles (1997) Goal Model** | 46.84% | 0.3842 | 1.0394 | 0.6214 | 0.2137 | 96.0% efficiency |
+| **MatchIQ Calibrated Model** | **47.63%** | **0.3989** | **1.0315** | **0.6205** | **0.2099** | **97.8% efficiency** |
+| **Blended Model (65% ML + 35% Dixon-Coles)** | 46.84% | 0.3912 | 1.0291 | 0.6191 | **0.2097** | **97.9% efficiency** |
+| **Closing Betting Market Odds** (Market Consensus) | **49.47%** | **0.4124** | **1.0153** | **0.6100** | **0.2053** | **100.0% (Ceiling Benchmark)** |
 
 ---
 
-## Modeling Insights & Trade-offs
+## Per-Class Performance: Standard Argmax vs. Tuned Draw Threshold ($\theta=0.230$)
 
-### 1. The Draw Prediction Dilemma
-Draws are the most high-variance outcome in football (~24.5% occurrence rate in the 13-season dataset). In a calibrated 3-class model, draw probabilities typically range between 22% and 32%. Because home and away win probabilities routinely exceed 35%, a standard $\arg\max$ decision rule will almost never choose DRAW as the discrete top class.
+| Evaluation Mode | Class | Precision | Recall | F1-Score | Support |
+|---|---|:---:|:---:|:---:|:---:|
+| **Standard $\arg\max$** | **HOME_WIN** | 0.5149 | 0.7469 | 0.6096 | 162 |
+| | **DRAW** | 0.0000 | 0.0000 | 0.0000 | 104 |
+| | **AWAY_WIN** | 0.4138 | 0.5263 | 0.4633 | 114 |
+| | *Macro Average* | 0.3096 | 0.4244 | 0.3576 | 380 |
+| **Tuned Decision Threshold ($\theta=0.230$)** | **HOME_WIN** | 0.5574 | 0.4198 | 0.4789 | 162 |
+| | **DRAW** | **0.2585** | **0.5096** | **0.3430** | 104 |
+| | **AWAY_WIN** | 0.4340 | 0.2018 | 0.2754 | 114 |
+| | *Macro Average* | **0.4166** | **0.3770** | **0.3658** | 380 |
 
-Rather than forcing draw predictions with arbitrary probability threshold hacks (which increases false positives and degrades calibration), MatchIQ outputs continuous, calibrated probability vectors $[P(\text{Home}), P(\text{Draw}), P(\text{Away})]$. Downstream simulation tools sample from this distribution directly, preserving accurate league-wide draw rates (~24%).
+---
 
-### 2. Model Selection: Random Forest vs. XGBoost
-XGBoost achieved marginally higher discrete accuracy on validation (57.09% vs. 56.28%), but Random Forest achieved lower Log Loss (**0.9515** vs. 0.9572) and a superior Brier Score (**0.5621** vs. 0.5643). Random Forest was selected because ensemble bagging produces smoother probability estimates on noisy sports fixtures, avoiding the overconfident extreme predictions that penalize boosted gradient methods.
+## Dixon-Coles Goal Model Parameters
+- **Home Advantage Factor $\gamma$:** $+0.176$
+- **Low-Score Interaction Parameter $\rho$:** $-0.0819$
+- **Time Decay Half-Life $\xi$:** $0.0019$
+- **Scoreline Matrix Dimension:** $11 \times 11$

@@ -166,6 +166,18 @@ class ProbabilitiesOut(BaseModel):
     away_win: float
 
 
+class ScorelineOut(BaseModel):
+    score: str
+    home_goals: int
+    away_goals: int
+    probability: float
+
+
+class ExpectedGoalsOut(BaseModel):
+    home_xg: float
+    away_xg: float
+
+
 class PredictionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
@@ -176,6 +188,8 @@ class PredictionOut(BaseModel):
     confidence: str  # HIGH / MEDIUM / LOW
     model_version: str | None
     explanation: list[ExplanationFactor]
+    expected_goals: ExpectedGoalsOut | None = None
+    top_scorelines: list[ScorelineOut] = []
     created_at: datetime
 
 

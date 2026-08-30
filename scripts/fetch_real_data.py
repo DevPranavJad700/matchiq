@@ -203,6 +203,22 @@ def parse_and_clean_matches() -> pd.DataFrame:
             h_est_xg = round(float(hg * 0.4 + hst * 0.15 + (hs - hst) * 0.05), 2)
             a_est_xg = round(float(ag * 0.4 + ast * 0.15 + (as_ - ast) * 0.05), 2)
 
+            # Extract closing betting market odds and calculate de-vigged implied probabilities
+            oh = float(row["AvgH"]) if "AvgH" in df.columns and pd.notna(row["AvgH"]) and float(row["AvgH"]) > 1.0 else (
+                float(row["B365H"]) if "B365H" in df.columns and pd.notna(row["B365H"]) and float(row["B365H"]) > 1.0 else 2.30
+            )
+            od = float(row["AvgD"]) if "AvgD" in df.columns and pd.notna(row["AvgD"]) and float(row["AvgD"]) > 1.0 else (
+                float(row["B365D"]) if "B365D" in df.columns and pd.notna(row["B365D"]) and float(row["B365D"]) > 1.0 else 3.25
+            )
+            oa = float(row["AvgA"]) if "AvgA" in df.columns and pd.notna(row["AvgA"]) and float(row["AvgA"]) > 1.0 else (
+                float(row["B365A"]) if "B365A" in df.columns and pd.notna(row["B365A"]) and float(row["B365A"]) > 1.0 else 3.10
+            )
+            inv_h, inv_d, inv_a = 1.0 / oh, 1.0 / od, 1.0 / oa
+            overround = inv_h + inv_d + inv_a
+            market_prob_h = round(float(inv_h / overround), 4)
+            market_prob_d = round(float(inv_d / overround), 4)
+            market_prob_a = round(float(inv_a / overround), 4)
+
             season_matches.append({
                 "match_id": match_id,
                 "match_date": match_date.isoformat(),
@@ -222,6 +238,12 @@ def parse_and_clean_matches() -> pd.DataFrame:
                 "away_xg": a_est_xg,
                 "home_estimated_xg": h_est_xg,
                 "away_estimated_xg": a_est_xg,
+                "odds_home": round(oh, 2),
+                "odds_draw": round(od, 2),
+                "odds_away": round(oa, 2),
+                "market_prob_home": market_prob_h,
+                "market_prob_draw": market_prob_d,
+                "market_prob_away": market_prob_a,
             })
             match_id += 1
 

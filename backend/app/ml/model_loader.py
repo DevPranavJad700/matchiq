@@ -15,6 +15,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 _model = None
+_dixon_coles = None
 _feature_names: list[str] = []
 _model_metadata: dict = {}
 _explainer = None
@@ -65,8 +66,15 @@ def load_model() -> bool:
         # Load SHAP explainer (TreeExplainer for RF/XGBoost, LinearExplainer/Explainer for Pipelines)
         try:
             import shap
-            # Extract final estimator if model is a Pipeline
-            clf = _model.named_steps.get("clf", _model) if hasattr(_model, "named_steps") else _model
+            # Extract base estimator if wrapped in CalibratedClassifierCV
+            base_clf = _model
+            if hasattr(_model, "calibrated_classifiers_") and len(_model.calibrated_classifiers_) > 0:
+                base_clf = _model.calibrated_classifiers_[0].estimator
+            elif hasattr(_model, "estimator"):
+                base_clf = _model.estimator
+
+            # Extract final classifier if pipeline
+            clf = base_clf.named_steps.get("clf", base_clf) if hasattr(base_clf, "named_steps") else base_clf
 
             try:
                 _explainer = shap.TreeExplainer(clf)
@@ -82,6 +90,16 @@ def load_model() -> bool:
             logger.warning(f"SHAP explainer unavailable: {e}. Explanations will use coefficient weights.")
             _explainer = None
 
+        # Load Dixon-Coles statistical goal model if available
+        dc_path = model_dir / "dixon_coles.joblib"
+        if dc_path.exists():
+            try:
+                from ml.models.dixon_coles import DixonColesEngine
+                _dixon_coles = DixonColesEngine.load(dc_path)
+                logger.info("Dixon-Coles goal model loaded successfully")
+            except Exception as dce:
+                logger.warning(f"Could not load Dixon-Coles model: {dce}")
+
         return True
 
     except Exception as e:
@@ -94,6 +112,25 @@ def get_model():
     if _model is None:
         raise RuntimeError("Model not loaded. Run load_model() first.")
     return _model
+
+
+def get_dixon_coles():
+    """Return the loaded Dixon-Coles statistical engine."""
+    return _dixon_coles
+
+
+def predict_scorelines(home_team: str, away_team: str, top_n: int = 3) -> list[dict]:
+    """Predict most probable exact scorelines using Dixon-Coles Poisson model."""
+    if _dixon_coles is not None and getattr(_dixon_coles, "is_fitted", False):
+        return _dixon_coles.predict_top_scorelines(home_team, away_team, top_n)
+    return []
+
+
+def get_expected_goals(home_team: str, away_team: str) -> tuple[float, float]:
+    """Calculate expected goals lambda (home) and mu (away) via Dixon-Coles."""
+    if _dixon_coles is not None and getattr(_dixon_coles, "is_fitted", False):
+        return _dixon_coles.get_expected_goals(home_team, away_team)
+    return 1.45, 1.15
 
 
 def get_feature_names() -> list[str]:
@@ -161,8 +198,14 @@ def explain_prediction(feature_vector: np.ndarray) -> list[dict]:
 
         # 2. Fallback to coefficient-based feature contribution for linear/logistic models
         if class_shap is None or np.all(np.abs(class_shap) < 1e-6):
-            clf = _model.named_steps.get("clf", _model) if hasattr(_model, "named_steps") else _model
-            scaler = _model.named_steps.get("scaler", None) if hasattr(_model, "named_steps") else None
+            base_clf = _model
+            if hasattr(_model, "calibrated_classifiers_") and len(_model.calibrated_classifiers_) > 0:
+                base_clf = _model.calibrated_classifiers_[0].estimator
+            elif hasattr(_model, "estimator"):
+                base_clf = _model.estimator
+
+            clf = base_clf.named_steps.get("clf", base_clf) if hasattr(base_clf, "named_steps") else base_clf
+            scaler = base_clf.named_steps.get("scaler", None) if hasattr(base_clf, "named_steps") else None
 
             if hasattr(clf, "coef_"):
                 coefs = clf.coef_[best_class] if clf.coef_.ndim > 1 else clf.coef_

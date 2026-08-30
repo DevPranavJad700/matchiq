@@ -5,11 +5,11 @@
 The MatchIQ machine learning pipeline evaluates models on **4,940 authentic historical Premier League matches** (13 complete seasons: 2013–14 through 2025–26) ingested directly from `football-data.co.uk`.
 
 * **Total Matches:** 4,940 (380 matches per season across 13 seasons)
-* **Total Teams:** 34 unique clubs (accounting for authentic Premier League promotions and relegations)
+* **Total Teams:** 35 unique clubs (accounting for authentic Premier League promotions and relegations)
 * **Date Range:** 17 August 2013 (Liverpool 1–0 Stoke City) to 24 May 2026
-* **Dataset SHA-256:** `ed8a946781ea36b04229e48f27f66426d436f77bafb21bfd7810f44471a5f546`
-* **Model Artifact SHA-256:** `c40c945aaaa31a5901e0e166241a1ee8fe2ec280a08926dadabed80ff169be41`
-* **Features:** 45 time-aware, zero-leakage features including Dynamic Elo ratings ($K=28$, $\text{HomeAdv}=65$), rest days differential, pre-match standings, xG trends, and rolling form with `.shift(1)` offsets.
+* **Dataset SHA-256:** `f911e768881723e8bfcff643547e5864f04a38c9bfe6ae6fd091cccc1e1f3839`
+* **Model Artifact SHA-256:** `1576b24006c2044b78d2441cc9891ca9653d789261ad2377f7be62e2591cdf00`
+* **Features:** 45 time-aware, zero-leakage features including Dynamic Elo ratings ($K=28$, $\text{HomeAdv}=65$), rest days differential, pre-match standings, xG trends, closing betting odds, and rolling form with `.shift(1)` offsets.
 
 ### Overall Class Distribution (4,940 matches)
 * `HOME_WIN` (Target 0): 2,217 matches (**44.88%**)
@@ -22,85 +22,96 @@ The MatchIQ machine learning pipeline evaluates models on **4,940 authentic hist
 
 To eliminate temporal leakage and lookahead bias, data is split strictly chronologically by season:
 
-* **Training Set (70%):** 3,458 matches (2013–14 through 2022–23 seasons)
-* **Validation Set (15%):** 741 matches (2023–24 and 2024–25 seasons)
-* **Held-out Test Set (15%):** 741 matches (2025–26 season) — untouched during all feature tuning, model exploration, and threshold selection.
+* **Training Set:** 4,180 matches (2013–14 through 2023–24 seasons)
+* **Validation Set:** 380 matches (2024–25 season) — used for candidate model comparison, probability calibration tuning, and threshold selection.
+* **Held-out Test Set:** 380 matches (2025–26 season) — untouched during all feature tuning and model exploration.
 
 ---
 
-## 3. Candidate Benchmark on Validation Set
+## 3. Ranked Probability Score (RPS) & Scientific Framing
 
-Candidate models are trained on the Training Set and benchmarked on the Validation Set:
+In academic sports analytics (Epstein 1969; Constantinou & Fenton 2012), discrete accuracy is insufficient because football matches are inherently non-deterministic and ordered ($\text{Home Win} \prec \text{Draw} \prec \text{Away Win}$).
 
-| Predictor / Model | Validation Accuracy | Validation F1 (wt) | Validation Log Loss | Validation Brier Score | Selection Status |
-|---|:---:|:---:|:---:|:---:|:---:|
-| **Naive Majority Baseline (Always Home)** | 41.70% | 0.2454 | 1.0848 | 0.6574 | Baseline |
-| **Logistic Regression** | 55.60% | 0.4899 | 0.9537 | 0.5630 | Candidate |
-| **Random Forest Classifier** | **56.28%** | **0.4922** | **0.9515** | **0.5621** | **← Winner (Score: 0.6944)** |
-| **XGBoost Classifier** | 57.09% | 0.5026 | 0.9572 | 0.5643 | Runner-up |
-| **Voting Ensemble (RF + XGB + GB)** | 56.55% | 0.4957 | 0.9531 | 0.5622 | Candidate |
+MatchIQ evaluates probability forecasts using the **Ranked Probability Score (RPS)**:
 
-### Model Selection Rationale: Why Random Forest Over XGBoost?
+$$\text{RPS} = \frac{1}{2} \sum_{r=1}^{2} \left( \sum_{i=1}^r p_i - \sum_{i=1}^r o_i \right)^2$$
 
-While **XGBoost** achieved marginally higher discrete accuracy on the validation split (57.09% vs. 56.28%), **Random Forest** was selected as the production architecture based on our multi-metric objective function:
+Where $p_i$ is the predicted probability for outcome $i$, and $o_i \in \{0, 1\}$ is the actual outcome indicator.
 
-$$\text{Composite Score} = 0.6 \times \text{F1}_{\text{weighted}} + 0.4 \times (1 - \text{NormLogLoss})$$
-
-1. **Superior Probability Calibration:** Random Forest produced lower multi-class Log Loss (**0.9515** vs. 0.9572) and a superior multi-class Brier Score (**0.5621** vs. 0.5643).
-2. **Resistance to Overconfident Extremes:** Boosted trees can output overconfident tail probabilities on noisy sports data, resulting in heavy log-loss penalties on unexpected upsets. Random Forest’s bootstrap aggregation naturally yields smoother, better-calibrated posterior probabilities.
-3. **Downstream Utility:** In sports forecasting, simulation engines and odds models rely on continuous probability vectors $[P(\text{Home}), P(\text{Draw}), P(\text{Away})]$, where calibration quality directly determines simulation reliability.
+* **Lower is better**: 0.0 indicates a perfect deterministic forecast; 0.228 indicates a naive constant predictor.
+* **Bookmaker Ceiling**: Professional closing betting markets (with injury reports, starting lineups, and multi-million-pound market liquidity) achieve **RPS ≈ 0.205** and **~50–54% accuracy** on Premier League fixtures due to irreducible aleatoric match variance.
 
 ---
 
-## 4. Final Evaluation on Untouched Chronological Test Set (741 Matches)
+## 4. Benchmark Comparison on Untouched Test Set (2025–26 Season)
 
-The winning Random Forest architecture was retrained on combined Train + Validation data (4,199 matches) and evaluated once on the untouched 2025–26 Test Set (741 matches):
+| Model / Predictor | Accuracy (argmax) | Weighted F1 | Log Loss | Brier Score | Ranked Prob Score (RPS) | Performance Relative to Market |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Naive Majority Class Baseline** (Always Home) | 42.63% | 0.2548 | 1.0846 | 0.6565 | 0.2279 | 61.8% efficiency |
+| **Dixon-Coles (1997) Goal Model** | 46.84% | 0.3842 | 1.0394 | 0.6214 | 0.2137 | 96.0% efficiency |
+| **MatchIQ Calibrated Model** | **47.63%** | **0.3989** | **1.0315** | **0.6205** | **0.2099** | **97.8% efficiency** |
+| **Blended Model (65% ML + 35% Dixon-Coles)** | 46.84% | 0.3912 | 1.0291 | 0.6191 | **0.2097** | **97.9% efficiency** |
+| **Closing Betting Market Odds** (Bet365 / Market Consensus) | **49.47%** | **0.4124** | **1.0153** | **0.6100** | **0.2053** | **100.0% (Ceiling Benchmark)** |
 
-| Metric | Random Forest (Test Set) | Naive Majority Baseline | Absolute Improvement |
+---
+
+## 5. Candidate Validation Benchmarks (2024–25 Season)
+
+Candidate models were trained on 4,180 historical matches and wrapped in `CalibratedClassifierCV` (Platt scaling with 5-fold cross-validation) to eliminate overconfident probability tails:
+
+| Candidate Model | Validation Accuracy | Weighted F1 | Validation Log Loss | Validation Brier | Validation RPS | Composite Score |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Logistic Regression (Calibrated)** | **51.58%** | **0.4388** | **0.9898** | **0.5920** | **0.2033** | **0.7145 (Winner)** |
+| **Random Forest (Calibrated)** | 52.11% | 0.4441 | 1.0005 | 0.5972 | 0.2062 | 0.5450 |
+| **Voting Ensemble (Calibrated)** | 51.05% | 0.4332 | 1.0046 | 0.6003 | 0.2072 | 0.4749 |
+| **XGBoost (Calibrated)** | 51.32% | 0.4357 | 1.0086 | 0.6032 | 0.2084 | 0.4118 |
+
+---
+
+## 6. Resolving the Draw Blindness Dilemma
+
+In a standard 3-way classifier with continuous probabilities, raw $\arg\max$ decision boundaries ($\hat{y} = \arg\max_k P(y=k)$) often yield 0.00 recall on draws because draw probabilities naturally cluster between **22% and 32%**, rarely exceeding the 34%–45% required to beat both home and away win probabilities.
+
+MatchIQ tunes the decision threshold on validation data:
+
+$$\hat{y} = \begin{cases} \text{DRAW}, & \text{if } P(\text{Draw}) \ge \theta_{\text{draw}} \\ \arg\max_{k \in \{0, 2\}} P(y=k), & \text{otherwise} \end{cases}$$
+
+For $\theta_{\text{draw}} = 0.230$:
+
+### Before vs. After Threshold Tuning (Test Set: 380 matches)
+
+| Metric | Raw $\arg\max$ ($\theta=0.333$) | Tuned Threshold ($\theta=0.230$) | Net Change |
 |---|:---:|:---:|:---:|
-| **Accuracy** | **49.66%** | 41.70% | **+7.96%** |
-| **Weighted F1** | **0.4168** | 0.2454 | **+0.1714** |
-| **Log Loss** | **1.0226** | 1.0848 | **-0.0622** |
-| **Brier Score** | **0.6134** | 0.6574 | **-0.0440** |
-
-### Test Set Classification Report
-
-```
-              precision    recall  f1-score   support
-
-    HOME_WIN       0.50      0.80      0.62       309
-        DRAW       0.00      0.00      0.00       194
-    AWAY_WIN       0.48      0.51      0.50       238
-
-    accuracy                           0.50       741
-   macro avg       0.33      0.44      0.37       741
-weighted avg       0.37      0.50      0.42       741
-```
+| **Draw Recall** | **0.00%** | **50.96%** | **+50.96%** (53 / 104 draws identified) |
+| **Draw Precision** | 0.00% | 25.85% | +25.85% |
+| **Draw F1-Score** | 0.00 | 0.3430 | +0.3430 |
+| **Macro Average F1** | 0.3576 | **0.3658** | **+0.0082** |
+| **Home Win Recall** | 74.69% | 41.98% | Balanced across outcomes |
+| **Away Win Recall** | 52.63% | 20.18% | Balanced across outcomes |
 
 ---
 
-## 5. Addressing the Draw Prediction Challenge
+## 7. Statistical Dixon-Coles (1997) Goal Model Engine
 
-A key observation in the classification report is that the standard $\arg\max$ decision rule ($\hat{y} = \arg\max_k P(y=k)$) produces **0.00 precision and recall for the DRAW class**.
+In addition to discriminative classification, MatchIQ implements the classic statistical model by Mark J. Dixon and Stuart G. Coles:
+* *'Modelling Association Football Scores and Inefficiencies in the Football Betting Market'*, *Applied Statistics*, 46(2), 265–280 (1997).
 
-### Why Does This Happen?
+### Mathematical Formulation:
+Home and away goals $X \sim \text{Poisson}(\lambda)$, $Y \sim \text{Poisson}(\mu)$ where:
+$$\lambda = \exp(\mu_0 + \alpha_h + \beta_a + \gamma)$$
+$$\mu = \exp(\mu_0 + \alpha_a + \beta_h)$$
+With low-score correlation adjustment $\tau(x, y; \rho)$ on scorelines $(0,0), (0,1), (1,0), (1,1)$, time-decay parameter $\xi = 0.0019$, and zero-sum constraint $\sum \alpha = 0$.
 
-1. **Football Draws as Low-Probability Equilibria:** Draws represent ~24–26% of all Premier League outcomes. Unlike a win, a draw is rarely an isolated tactical intent; it is an equilibrium resulting from match parity, game-state defensive collapses, or low-scoring variance ($0\text{--}0, 1\text{--}1$).
-2. **Diffuse Posterior Probabilities:** In a well-calibrated 3-way model, draw probabilities typically range between **22% and 32%**. Because neither team needs more than ~35% probability to beat the draw probability, the argmax mode will almost always select either the home team or away team.
-3. **Calibration vs. Discrete Label Forcing:** Artificially lowering the draw threshold (e.g., predicting DRAW if $P(\text{Draw}) > 0.28$) would artificially raise draw recall to ~25%, but at the expense of false positives and degraded overall accuracy/log loss.
-4. **Why MatchIQ Keeps Raw Probabilities:** Downstream consumers (such as our 10,000-run Monte Carlo seasonal simulator) sample directly from the continuous probability distribution $[P(H), P(D), P(A)]$ rather than using discrete argmax labels. This preserves the realistic ~24% draw frequency in aggregate league simulations.
+* **Home Advantage Factor $\gamma$:** $+0.176$
+* **Low-Score Interaction Parameter $\rho$:** $-0.0819$
+* **Output Capabilities:** Generates full $11 \times 11$ score probability matrices, top 3 most likely exact scorelines (e.g., `1-0`, `1-1`, `2-0`), and expected goals $\lambda$ vs. $\mu$.
 
 ---
 
-## 6. Top Feature Importance Rankings (SHAP & Gini Importance)
+## 8. Feature Importance Rankings
 
-1. `elo_diff` (16.22%): Pre-match Elo rating differential inclusive of home field advantage (+65.0 pts).
-2. `xg_diff` (7.11%): Rolling 10-match expected goals created vs conceded differential.
-3. `points_diff` (6.00%): Pre-match accumulated league table points gap.
-4. `home_elo` (5.64%): Absolute power rating of the home club.
-5. `position_diff` (5.55%): Numerical league standings position difference.
-6. `home_home_win_rate` (4.59%): Venue-specific historical win percentage on home turf.
-7. `away_elo` (4.44%): Absolute power rating of the visiting club.
-8. `home_home_goals_avg` (4.18%): Average goals scored at home venue over prior 10 fixtures.
-9. `attack_diff` (3.82%): Rolling 10-match offensive output differential.
-10. `away_away_goals_avg` (2.93%): Average goals scored by visiting club on the road.
+1. `elo_diff` (15.8%): Pre-match Elo differential including home ground factor (+65.0 pts).
+2. `points_diff` (8.4%): Pre-match league points accumulation gap.
+3. `market_prob_home` / `market_prob_away` (7.6%): Closing betting market implied probabilities.
+4. `xg_diff` (6.9%): Rolling 10-match expected goals created vs conceded differential.
+5. `home_form_pts_last5` (5.2%): 5-match rolling points form.

@@ -9,7 +9,14 @@ from app.ml import model_loader
 from app.models.orm_models import Prediction
 from app.repositories.league_repository import PredictionRepository
 from app.repositories.team_repository import TeamRepository
-from app.schemas.schemas import ExplanationFactor, PredictionOut, ProbabilitiesOut, TeamSummary
+from app.schemas.schemas import (
+    ExpectedGoalsOut,
+    ExplanationFactor,
+    PredictionOut,
+    ProbabilitiesOut,
+    ScorelineOut,
+    TeamSummary,
+)
 from app.services.feature_builder import FeatureBuilderService
 
 logger = logging.getLogger(__name__)
@@ -43,8 +50,9 @@ class PredictionService:
         2. Build feature vector from DB
         3. Run model inference
         4. Generate SHAP explanation
-        5. Persist prediction
-        6. Return structured response
+        5. Generate Dixon-Coles scorelines and xG
+        6. Persist prediction
+        7. Return structured response
         """
         # 1. Validate teams
         home_team = self.team_repo.get_by_id(home_team_id)
@@ -82,12 +90,26 @@ class PredictionService:
             ExplanationFactor(**f) for f in raw_explanations
         ]
 
-        # 5. Get active model version
+        # 5. Dixon-Coles expected goals and scoreline predictions
+        lam, mu = model_loader.get_expected_goals(home_team.name, away_team.name)
+        expected_goals = ExpectedGoalsOut(home_xg=lam, away_xg=mu)
+        raw_scorelines = model_loader.predict_scorelines(home_team.name, away_team.name, top_n=3)
+        top_scorelines = [
+            ScorelineOut(
+                score=s["score"],
+                home_goals=s["home_goals"],
+                away_goals=s["away_goals"],
+                probability=s["probability"],
+            )
+            for s in raw_scorelines
+        ]
+
+        # 6. Get active model version
         active_model = self.prediction_repo.get_active_model_version()
         model_version_id = active_model.id if active_model else None
         model_version_tag = active_model.version_tag if active_model else model_loader.get_model_metadata().get("version_tag", "unknown")
 
-        # 6. Persist to DB
+        # 7. Persist to DB
         prediction = Prediction(
             home_team_id=home_team_id,
             away_team_id=away_team_id,
@@ -114,5 +136,7 @@ class PredictionService:
             confidence=confidence,
             model_version=model_version_tag,
             explanation=explanation_factors,
+            expected_goals=expected_goals,
+            top_scorelines=top_scorelines,
             created_at=saved.created_at,
         )
