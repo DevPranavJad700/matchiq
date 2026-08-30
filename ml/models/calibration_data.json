@@ -1,0 +1,70 @@
+{
+  "HOME_WIN": {
+    "brier_uncalibrated": 0.2328,
+    "brier_calibrated": 0.2222,
+    "ece_uncalibrated": 0.0655,
+    "ece_calibrated": 0.0331,
+    "calibrated_curve": [
+      {
+        "predicted": 0.1273,
+        "empirical": 0.0
+      },
+      {
+        "predicted": 0.2564,
+        "empirical": 0.2551
+      },
+      {
+        "predicted": 0.4132,
+        "empirical": 0.416
+      },
+      {
+        "predicted": 0.5831,
+        "empirical": 0.5547
+      },
+      {
+        "predicted": 0.7056,
+        "empirical": 0.7
+      }
+    ]
+  },
+  "DRAW": {
+    "brier_uncalibrated": 0.2066,
+    "brier_calibrated": 0.2007,
+    "ece_uncalibrated": 0.0656,
+    "ece_calibrated": 0.0427,
+    "calibrated_curve": [
+      {
+        "predicted": 0.231,
+        "empirical": 0.2737
+      }
+    ]
+  },
+  "AWAY_WIN": {
+    "brier_uncalibrated": 0.1998,
+    "brier_calibrated": 0.1976,
+    "ece_uncalibrated": 0.0563,
+    "ece_calibrated": 0.0987,
+    "calibrated_curve": [
+      {
+        "predicted": 0.1245,
+        "empirical": 0.1406
+      },
+      {
+        "predicted": 0.2425,
+        "empirical": 0.2558
+      },
+      {
+        "predicted": 0.4095,
+        "empirical": 0.3065
+      },
+      {
+        "predicted": 0.5579,
+        "empirical": 0.5167
+      },
+      {
+        "predicted": 0.6802,
+        "empirical": 1.0
+      }
+    ]
+  }
+}

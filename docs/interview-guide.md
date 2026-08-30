@@ -51,7 +51,7 @@ If you force an artificial threshold (e.g. $\theta_{\text{draw}} = 0.230$), the 
 Under Bayesian decision theory with symmetric 0-1 loss (maximizing accuracy), $\hat{y} = \arg\max_k P(y=k \mid x)$ is mathematically optimal. Therefore, we:
 1. Retain pure $\arg\max$ for headline predictions, preserving optimal classification accuracy (48.16% on Test / 51.58% on Validation) and avoiding credibility issues (e.g. Manchester City vs. a relegated club is never labeled "Draw").
 2. Treat the calibrated continuous probability distribution $[P(H), P(D), P(A)]$ as the primary ML deliverable (evaluated via Ranked Probability Score **0.2099** and Log Loss **1.0315**).
-3. Surface a "Contested Fixture — Elevated Draw Likelihood" badge in the UI when $P(\text{Draw}) \ge 0.28$, communicating draw risk transparently to users without distorting classification labels.
+3. Surface an "Elevated Draw Risk" badge in the UI when $P(\text{Draw}) \ge 0.250$ (the $\ge 90\text{th}$ percentile of draw risk across 4,940 matches, which empirically delivers a 1.34x lift in actual draw frequency), communicating uncertainty transparently without corrupting classification labels.
 
 ### Q9: How did you prevent data leakage in feature engineering?
 **Answer:** Time-awareness is strictly enforced using pandas `.shift(1)` across all rolling window operations in `ml/features/feature_engineering.py`. For any match $M$ on date $T$, the rolling 5-match form, Elo ratings, and 10-match goals/xG averages include *only* matches $1 \dots M-1$ played strictly before date $T$. Post-match statistics (e.g., match $M$'s goals/shots) are never in match $M$'s feature vector.
