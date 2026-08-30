@@ -1,0 +1,326 @@
+{
+  "HOME_WIN": {
+    "uncalibrated": {
+      "brier": 0.2328,
+      "standard_weighted_ece": 0.0936,
+      "unweighted_macro_ece": 0.0765,
+      "mce": 0.1281,
+      "bins": [
+        {
+          "bin": "[0.0, 0.2]",
+          "n": 90,
+          "weight": 0.2368,
+          "p_mean": 0.1437,
+          "y_mean": 0.2111,
+          "diff": 0.0674,
+          "weighted_contrib": 0.016
+        },
+        {
+          "bin": "[0.2, 0.4]",
+          "n": 160,
+          "weight": 0.4211,
+          "p_mean": 0.2969,
+          "y_mean": 0.425,
+          "diff": 0.1281,
+          "weighted_contrib": 0.0539
+        },
+        {
+          "bin": "[0.4, 0.6]",
+          "n": 108,
+          "weight": 0.2842,
+          "p_mean": 0.4882,
+          "y_mean": 0.5648,
+          "diff": 0.0767,
+          "weighted_contrib": 0.0218
+        },
+        {
+          "bin": "[0.6, 0.8]",
+          "n": 22,
+          "weight": 0.0579,
+          "p_mean": 0.6702,
+          "y_mean": 0.6364,
+          "diff": 0.0338,
+          "weighted_contrib": 0.002
+        },
+        {
+          "bin": "[0.8, 1.0]",
+          "n": 0,
+          "weight": 0.0,
+          "p_mean": null,
+          "y_mean": null,
+          "diff": 0.0,
+          "weighted_contrib": 0.0
+        }
+      ]
+    },
+    "calibrated": {
+      "brier": 0.2222,
+      "standard_weighted_ece": 0.022,
+      "unweighted_macro_ece": 0.0251,
+      "mce": 0.0319,
+      "bins": [
+        {
+          "bin": "[0.0, 0.2]",
+          "n": 23,
+          "weight": 0.0605,
+          "p_mean": 0.1619,
+          "y_mean": 0.1304,
+          "diff": 0.0314,
+          "weighted_contrib": 0.0019
+        },
+        {
+          "bin": "[0.2, 0.4]",
+          "n": 135,
+          "weight": 0.3553,
+          "p_mean": 0.3048,
+          "y_mean": 0.3185,
+          "diff": 0.0137,
+          "weighted_contrib": 0.0049
+        },
+        {
+          "bin": "[0.4, 0.6]",
+          "n": 151,
+          "weight": 0.3974,
+          "p_mean": 0.5002,
+          "y_mean": 0.4768,
+          "diff": 0.0234,
+          "weighted_contrib": 0.0093
+        },
+        {
+          "bin": "[0.6, 0.8]",
+          "n": 71,
+          "weight": 0.1868,
+          "p_mean": 0.6516,
+          "y_mean": 0.6197,
+          "diff": 0.0319,
+          "weighted_contrib": 0.006
+        },
+        {
+          "bin": "[0.8, 1.0]",
+          "n": 0,
+          "weight": 0.0,
+          "p_mean": null,
+          "y_mean": null,
+          "diff": 0.0,
+          "weighted_contrib": 0.0
+        }
+      ]
+    }
+  },
+  "DRAW": {
+    "uncalibrated": {
+      "brier": 0.2066,
+      "standard_weighted_ece": 0.0608,
+      "unweighted_macro_ece": 0.1071,
+      "mce": 0.1535,
+      "bins": [
+        {
+          "bin": "[0.0, 0.2]",
+          "n": 3,
+          "weight": 0.0079,
+          "p_mean": 0.1798,
+          "y_mean": 0.3333,
+          "diff": 0.1535,
+          "weighted_contrib": 0.0012
+        },
+        {
+          "bin": "[0.2, 0.4]",
+          "n": 339,
+          "weight": 0.8921,
+          "p_mean": 0.3224,
+          "y_mean": 0.2684,
+          "diff": 0.054,
+          "weighted_contrib": 0.0482
+        },
+        {
+          "bin": "[0.4, 0.6]",
+          "n": 38,
+          "weight": 0.1,
+          "p_mean": 0.4296,
+          "y_mean": 0.3158,
+          "diff": 0.1138,
+          "weighted_contrib": 0.0114
+        },
+        {
+          "bin": "[0.6, 0.8]",
+          "n": 0,
+          "weight": 0.0,
+          "p_mean": null,
+          "y_mean": null,
+          "diff": 0.0,
+          "weighted_contrib": 0.0
+        },
+        {
+          "bin": "[0.8, 1.0]",
+          "n": 0,
+          "weight": 0.0,
+          "p_mean": null,
+          "y_mean": null,
+          "diff": 0.0,
+          "weighted_contrib": 0.0
+        }
+      ]
+    },
+    "calibrated": {
+      "brier": 0.2007,
+      "standard_weighted_ece": 0.0427,
+      "unweighted_macro_ece": 0.0427,
+      "mce": 0.0427,
+      "bins": [
+        {
+          "bin": "[0.0, 0.2]",
+          "n": 0,
+          "weight": 0.0,
+          "p_mean": null,
+          "y_mean": null,
+          "diff": 0.0,
+          "weighted_contrib": 0.0
+        },
+        {
+          "bin": "[0.2, 0.4]",
+          "n": 380,
+          "weight": 1.0,
+          "p_mean": 0.231,
+          "y_mean": 0.2737,
+          "diff": 0.0427,
+          "weighted_contrib": 0.0427
+        },
+        {
+          "bin": "[0.4, 0.6]",
+          "n": 0,
+          "weight": 0.0,
+          "p_mean": null,
+          "y_mean": null,
+          "diff": 0.0,
+          "weighted_contrib": 0.0
+        },
+        {
+          "bin": "[0.6, 0.8]",
+          "n": 0,
+          "weight": 0.0,
+          "p_mean": null,
+          "y_mean": null,
+          "diff": 0.0,
+          "weighted_contrib": 0.0
+        },
+        {
+          "bin": "[0.8, 1.0]",
+          "n": 0,
+          "weight": 0.0,
+          "p_mean": null,
+          "y_mean": null,
+          "diff": 0.0,
+          "weighted_contrib": 0.0
+        }
+      ]
+    }
+  },
+  "AWAY_WIN": {
+    "uncalibrated": {
+      "brier": 0.1998,
+      "standard_weighted_ece": 0.0508,
+      "unweighted_macro_ece": 0.0722,
+      "mce": 0.1492,
+      "bins": [
+        {
+          "bin": "[0.0, 0.2]",
+          "n": 96,
+          "weight": 0.2526,
+          "p_mean": 0.1402,
+          "y_mean": 0.1354,
+          "diff": 0.0048,
+          "weighted_contrib": 0.0012
+        },
+        {
+          "bin": "[0.2, 0.4]",
+          "n": 154,
+          "weight": 0.4053,
+          "p_mean": 0.3007,
+          "y_mean": 0.3247,
+          "diff": 0.024,
+          "weighted_contrib": 0.0097
+        },
+        {
+          "bin": "[0.4, 0.6]",
+          "n": 110,
+          "weight": 0.2895,
+          "p_mean": 0.4835,
+          "y_mean": 0.3727,
+          "diff": 0.1107,
+          "weighted_contrib": 0.0321
+        },
+        {
+          "bin": "[0.6, 0.8]",
+          "n": 20,
+          "weight": 0.0526,
+          "p_mean": 0.6492,
+          "y_mean": 0.5,
+          "diff": 0.1492,
+          "weighted_contrib": 0.0079
+        },
+        {
+          "bin": "[0.8, 1.0]",
+          "n": 0,
+          "weight": 0.0,
+          "p_mean": null,
+          "y_mean": null,
+          "diff": 0.0,
+          "weighted_contrib": 0.0
+        }
+      ]
+    },
+    "calibrated": {
+      "brier": 0.1976,
+      "standard_weighted_ece": 0.031,
+      "unweighted_macro_ece": 0.0263,
+      "mce": 0.09,
+      "bins": [
+        {
+          "bin": "[0.0, 0.2]",
+          "n": 96,
+          "weight": 0.2526,
+          "p_mean": 0.1437,
+          "y_mean": 0.1354,
+          "diff": 0.0082,
+          "weighted_contrib": 0.0021
+        },
+        {
+          "bin": "[0.2, 0.4]",
+          "n": 153,
+          "weight": 0.4026,
+          "p_mean": 0.2999,
+          "y_mean": 0.3007,
+          "diff": 0.0008,
+          "weighted_contrib": 0.0003
+        },
+        {
+          "bin": "[0.4, 0.6]",
+          "n": 120,
+          "weight": 0.3158,
+          "p_mean": 0.49,
+          "y_mean": 0.4,
+          "diff": 0.09,
+          "weighted_contrib": 0.0284
+        },
+        {
+          "bin": "[0.6, 0.8]",
+          "n": 11,
+          "weight": 0.0289,
+          "p_mean": 0.6426,
+          "y_mean": 0.6364,
+          "diff": 0.0062,
+          "weighted_contrib": 0.0002
+        },
+        {
+          "bin": "[0.8, 1.0]",
+          "n": 0,
+          "weight": 0.0,
+          "p_mean": null,
+          "y_mean": null,
+          "diff": 0.0,
+          "weighted_contrib": 0.0
+        }
+      ]
+    }
+  }
+}

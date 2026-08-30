@@ -274,9 +274,9 @@ Evaluated on the untouched 2025–26 test season ($N=380$ matches):
 
 ![MatchIQ Reliability Diagrams](docs/assets/calibration_curve.png)
 
-* **Home Win**: Platt calibration reduces Expected Calibration Error (ECE) from 0.0655 down to **0.0331** (a **50% error reduction**), tracking the diagonal line almost identically (Brier score: **0.2222**).
-* **Draw**: Probability estimates cluster around **0.2310**, closely tracking the empirical 27.4% test base rate (ECE: **0.0427**, Brier score: **0.2007**).
-* **Away Win**: Global Brier score improves from $0.1998 \to \mathbf{0.1976}$ and **Sample-Weighted ECE drops to $0.0307$** (unweighted macro ECE is inflated by small-sample tail sparsity with only $n=2$ matches at $P(\text{Away}) > 0.65$).
+* **Home Win**: Platt calibration reduces canonical sample-weighted ECE from 0.0936 down to **0.0220** (a **76.5% error reduction**), tracking the diagonal line closely (Brier score: **0.2222**, MCE: **0.0319**).
+* **Draw**: Probability estimates cluster around **0.2310**, closely tracking the empirical 27.4% test base rate (Standard ECE: **0.0427**, Brier score: **0.2007**, MCE: **0.0427**).
+* **Away Win**: Standard sample-weighted ECE drops from 0.0508 down to **0.0310** (a **39.0% error reduction**) and Brier score improves from $0.1998 \to \mathbf{0.1976}$ (MCE: **0.0900**).
 
 ---
 

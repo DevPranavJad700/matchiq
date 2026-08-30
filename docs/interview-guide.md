@@ -62,9 +62,12 @@ Under Bayesian decision theory with symmetric 0-1 loss (maximizing accuracy), $\
 * **Validation Set:** 380 matches (1 season: 2024–25)
 * **Untouched Test Set:** 380 matches (1 season: 2025–26)
 
-### Q11: How did you evaluate probability calibration and explain the Away Win ECE?
-**Answer:** We evaluated calibration using Reliability Diagrams (binned predicted probability vs. observed frequency), Brier score loss, and Expected Calibration Error (ECE) on the 2025–26 test set. Platt calibration cut Home Win ECE by 50% (0.0655 → 0.0331) and improved Brier scores across all 3 classes (Home: 0.2222, Draw: 0.2007, Away: 0.1976).
-For Away Win, while global Brier score improved, unweighted macro ECE showed an apparent increase (0.0563 → 0.0987). This is an artifact of equal-width binning in sparse tails: only $n=2$ test matches had $P(\text{Away}) > 0.65$ (both were away wins, creating an unweighted error of $|1.0 - 0.68| = 0.32$ that skews the macro average). When bins are sample-weighted ($n_b / N$), the **Sample-Weighted ECE is 0.0307**, confirming genuine empirical calibration.
+### Q11: How did you evaluate probability calibration using standard ECE and Reliability Diagrams?
+**Answer:** We evaluated calibration using publication-ready Reliability Diagrams (binned predicted probability vs. observed frequency), Brier score loss, and canonical sample-weighted Expected Calibration Error ($\text{ECE} = \sum_{b=1}^{B} \frac{n_b}{N} |\text{acc}_b - \text{conf}_b|$, Naeini et al. 2015) on the 2025–26 test set ($N=380$).
+Platt calibration reduced calibration error and improved probability accuracy across all three outcomes:
+* **Home Win**: Standard ECE dropped from 0.0936 to **0.0220** (a **76.5% error reduction**), Brier score: 0.2328 → **0.2222**.
+* **Draw**: Standard ECE dropped from 0.0608 to **0.0427** (**29.8% reduction**), Brier score: 0.2066 → **0.2007**.
+* **Away Win**: Standard ECE dropped from 0.0508 to **0.0310** (**39.0% reduction**), Brier score: 0.1998 → **0.1976**.
 
 ---
 
