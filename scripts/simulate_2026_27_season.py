@@ -22,7 +22,7 @@ from sqlalchemy import select
 
 from app.db.session import SessionLocal
 from app.ml.model_loader import get_feature_names, get_model, load_model
-from app.models.orm_models import League, Match, Season, Standing, Team, TeamMatchStatistic
+from app.models.orm_models import League, Match, Prediction, Season, Standing, Team, TeamMatchStatistic
 from app.services.prediction_service import PredictionService
 
 
@@ -63,10 +63,12 @@ def main() -> None:
         "Ipswich Town",
     ]
 
-    # Ensure League 1 exists
-    league = db.execute(select(League).where(League.id == 1)).scalar_one_or_none()
+    # Find the Premier League (don't hardcode id — the actual id varies per database)
+    league = db.execute(
+        select(League).where(League.name == "Premier League", League.country == "England")
+    ).scalar_one_or_none()
     if not league:
-        league = League(id=1, name="Premier League", short_name="PL", country="England")
+        league = League(name="Premier League", short_name="PL", country="England")
         db.add(league)
         db.flush()
 
@@ -89,50 +91,122 @@ def main() -> None:
     for i, t in enumerate(teams, 1):
         print(f"   {i:2d}. {t.name:<25} (ID: {t.id})")
 
-    # 3. Execute 380 ML Predictions
-    print("\n--- Running Live ML Inference for all 380 Season Fixtures ---")
+    # 3. Load Real 2026-27 Fixtures CSV
+    csv_file = ROOT_DIR / "data" / "fixtures_2026_27.csv"
+    if not csv_file.exists():
+        raise FileNotFoundError(f"Fixture calendar not found at {csv_file}")
+
+    print(f"\n--- Loading Real 2026-27 Schedule from {csv_file.name} ---")
+    fixtures_df = pd.read_csv(csv_file)
+    print(f"Loaded {len(fixtures_df)} scheduled fixtures across {fixtures_df['Matchday'].nunique()} matchdays.")
+
+    NAME_MAP = {
+        "Arsenal": "Arsenal FC",
+        "Arsenal FC": "Arsenal FC",
+        "Manchester City": "Manchester City",
+        "Manchester United": "Manchester United",
+        "Aston Villa": "Aston Villa",
+        "Liverpool": "Liverpool FC",
+        "Liverpool FC": "Liverpool FC",
+        "AFC Bournemouth": "AFC Bournemouth",
+        "Bournemouth": "AFC Bournemouth",
+        "Sunderland": "Sunderland AFC",
+        "Sunderland AFC": "Sunderland AFC",
+        "Brighton & Hove Albion": "Brighton & Hove Albion",
+        "Brighton": "Brighton & Hove Albion",
+        "Brentford": "Brentford FC",
+        "Brentford FC": "Brentford FC",
+        "Chelsea": "Chelsea FC",
+        "Chelsea FC": "Chelsea FC",
+        "Fulham": "Fulham FC",
+        "Fulham FC": "Fulham FC",
+        "Newcastle United": "Newcastle United",
+        "Newcastle": "Newcastle United",
+        "Everton": "Everton FC",
+        "Everton FC": "Everton FC",
+        "Leeds United": "Leeds United",
+        "Leeds": "Leeds United",
+        "Crystal Palace": "Crystal Palace",
+        "Nottingham Forest": "Nottingham Forest",
+        "Tottenham Hotspur": "Tottenham Hotspur",
+        "Tottenham": "Tottenham Hotspur",
+        "Hull City": "Hull City",
+        "Hull": "Hull City",
+        "Coventry City": "Coventry City",
+        "Coventry": "Coventry City",
+        "Ipswich Town": "Ipswich Town",
+        "Ipswich": "Ipswich Town",
+    }
+
+    team_by_name = {t.name: t for t in teams}
+
+    # 4. Execute ML Predictions on Real Fixtures
+    print("\n--- Running Live ML Inference for all 380 Scheduled Fixtures ---")
     svc = PredictionService(db)
     matches = []
-    match_no = 1
 
-    for home_t in teams:
-        for away_t in teams:
-            if home_t.id == away_t.id:
-                continue
+    for match_no, (_, row) in enumerate(fixtures_df.iterrows(), 1):
+        raw_home = str(row["Home Team"]).strip()
+        raw_away = str(row["Away Team"]).strip()
+        home_canonical = NAME_MAP.get(raw_home, raw_home)
+        away_canonical = NAME_MAP.get(raw_away, raw_away)
 
-            pred = svc.predict(home_t.id, away_t.id)
-            p_h = pred.probabilities.home_win
-            p_d = pred.probabilities.draw
-            p_a = pred.probabilities.away_win
+        home_t = team_by_name.get(home_canonical)
+        away_t = team_by_name.get(away_canonical)
 
-            # Most likely exact scoreline from Dixon-Coles
-            top_score = pred.top_scorelines[0].score if pred.top_scorelines else "1-0"
-            try:
-                hg, ag = map(int, top_score.split("-"))
-            except Exception:
-                hg, ag = (1, 0) if pred.predicted_result == "HOME_WIN" else ((0, 1) if pred.predicted_result == "AWAY_WIN" else (1, 1))
+        if not home_t:
+            raise ValueError(f"Home team '{raw_home}' ({home_canonical}) not found in database teams!")
+        if not away_t:
+            raise ValueError(f"Away team '{raw_away}' ({away_canonical}) not found in database teams!")
 
-            matches.append({
-                "match_no": match_no,
-                "home_team_id": home_t.id,
-                "away_team_id": away_t.id,
-                "home_team": home_t.name,
-                "away_team": away_t.name,
-                "home_win_pct": f"{p_h * 100:.1f}%",
-                "draw_pct": f"{p_d * 100:.1f}%",
-                "away_win_pct": f"{p_a * 100:.1f}%",
-                "home_win_prob": round(p_h, 4),
-                "draw_prob": round(p_d, 4),
-                "away_win_prob": round(p_a, 4),
-                "home_goals": hg,
-                "away_goals": ag,
-                "predicted_outcome": "Home Win" if pred.predicted_result == "HOME_WIN" else ("Away Win" if pred.predicted_result == "AWAY_WIN" else "Draw"),
-                "result_code": "H" if pred.predicted_result == "HOME_WIN" else ("A" if pred.predicted_result == "AWAY_WIN" else "D"),
-                "confidence": pred.confidence,
-                "top_driver_1": pred.explanation[0].description if len(pred.explanation) > 0 else "N/A",
-                "top_driver_2": pred.explanation[1].description if len(pred.explanation) > 1 else "N/A",
-            })
-            match_no += 1
+        matchday = int(row["Matchday"])
+        date_str = str(row["Date"]).strip()
+        time_str = str(row.get("Kickoff (UK)", "15:00")).strip()
+        if not time_str or time_str == "nan":
+            time_str = "15:00"
+
+        try:
+            hour, minute = map(int, time_str.split(":"))
+            dt_base = datetime.fromisoformat(date_str)
+            match_datetime = datetime(dt_base.year, dt_base.month, dt_base.day, hour, minute, tzinfo=timezone.utc)
+        except Exception:
+            dt_base = datetime.fromisoformat(date_str)
+            match_datetime = datetime(dt_base.year, dt_base.month, dt_base.day, 15, 0, tzinfo=timezone.utc)
+
+        pred = svc.predict(home_t.id, away_t.id)
+        p_h = pred.probabilities.home_win
+        p_d = pred.probabilities.draw
+        p_a = pred.probabilities.away_win
+
+        # Most likely exact scoreline from Dixon-Coles
+        top_score = pred.top_scorelines[0].score if pred.top_scorelines else "1-0"
+        try:
+            hg, ag = map(int, top_score.split("-"))
+        except Exception:
+            hg, ag = (1, 0) if pred.predicted_result == "HOME_WIN" else ((0, 1) if pred.predicted_result == "AWAY_WIN" else (1, 1))
+
+        matches.append({
+            "match_no": match_no,
+            "matchday": matchday,
+            "match_datetime": match_datetime,
+            "home_team_id": home_t.id,
+            "away_team_id": away_t.id,
+            "home_team": home_t.name,
+            "away_team": away_t.name,
+            "home_win_pct": f"{p_h * 100:.1f}%",
+            "draw_pct": f"{p_d * 100:.1f}%",
+            "away_win_pct": f"{p_a * 100:.1f}%",
+            "home_win_prob": round(p_h, 4),
+            "draw_prob": round(p_d, 4),
+            "away_win_prob": round(p_a, 4),
+            "home_goals": hg,
+            "away_goals": ag,
+            "predicted_outcome": "Home Win" if pred.predicted_result == "HOME_WIN" else ("Away Win" if pred.predicted_result == "AWAY_WIN" else "Draw"),
+            "result_code": "H" if pred.predicted_result == "HOME_WIN" else ("A" if pred.predicted_result == "AWAY_WIN" else "D"),
+            "confidence": pred.confidence,
+            "top_driver_1": pred.explanation[0].description if len(pred.explanation) > 0 else "N/A",
+            "top_driver_2": pred.explanation[1].description if len(pred.explanation) > 1 else "N/A",
+        })
 
     matches_df = pd.DataFrame(matches)
     os.makedirs("reports", exist_ok=True)
@@ -146,7 +220,7 @@ def main() -> None:
         matches_df.to_csv(alt_path, index=False)
         print(f"File locked, saved predictions to alternate file: {alt_path}")
 
-    # 4. Monte Carlo Season Table Simulation (10,000 runs)
+    # 5. Monte Carlo Season Table Simulation (10,000 runs)
     print("\n--- Running 10,000 Monte Carlo Season Simulations from Model Probabilities ---")
     N_SIMS = 10000
     np.random.seed(42)
@@ -241,19 +315,21 @@ def main() -> None:
 
     print(standings_df[["Club", "MP", "W", "D", "L", "GF", "GA", "GD", "Pts", "Last 5"]].to_string())
 
-    # 5. Seed 2026-27 Season into Database
-    print("\n--- Seeding 2026-27 Projected Season & Standings into Database ---")
+    # 6. Seed 2026-27 Season into Database
+    print("\n--- Seeding 2026-27 Real Scheduled Season & Standings into Database ---")
     season_2627 = db.execute(select(Season).where(Season.year == "2026-27")).scalar_one_or_none()
     if not season_2627:
         season_2627 = Season(league_id=league.id, year="2026-27")
         db.add(season_2627)
         db.flush()
 
-    # Clear prior 2026-27 matches and standings
+    # Clear prior 2026-27 matches, predictions, statistics, and standings
     db.query(Standing).where(Standing.season_id == season_2627.id).delete()
     prior_matches = db.execute(select(Match).where(Match.season_id == season_2627.id)).scalars().all()
-    for m in prior_matches:
-        db.query(TeamMatchStatistic).where(TeamMatchStatistic.match_id == m.id).delete()
+    prior_match_ids = [m.id for m in prior_matches]
+    if prior_match_ids:
+        db.query(Prediction).filter(Prediction.match_id.in_(prior_match_ids)).delete(synchronize_session=False)
+        db.query(TeamMatchStatistic).filter(TeamMatchStatistic.match_id.in_(prior_match_ids)).delete(synchronize_session=False)
     db.query(Match).where(Match.season_id == season_2627.id).delete()
     db.flush()
 
@@ -273,18 +349,18 @@ def main() -> None:
             points=int(row["Pts"]),
         ))
 
-    # Insert 380 Projected Matches
-    # Arrange into 38 matchweeks (10 matches per matchweek)
-    from datetime import timedelta
-    base_season_start = datetime(2026, 8, 15, 15, 0, tzinfo=timezone.utc)
-    for idx, row in matches_df.iterrows():
-        matchday = (idx // 10) + 1
-        m_date = base_season_start + timedelta(days=int((matchday - 1) * 7))
+    # Insert 380 Real Scheduled Projected Matches
+    for _, row in matches_df.iterrows():
+        h_id = int(row["home_team_id"])
+        a_id = int(row["away_team_id"])
+        matchday = int(row["matchday"])
+        m_date = row["match_datetime"]
+
         match = Match(
             season_id=season_2627.id,
             league_id=league.id,
-            home_team_id=int(row["home_team_id"]),
-            away_team_id=int(row["away_team_id"]),
+            home_team_id=h_id,
+            away_team_id=a_id,
             match_date=m_date,
             home_score=int(row["home_goals"]),
             away_score=int(row["away_goals"]),
@@ -296,7 +372,7 @@ def main() -> None:
 
         db.add(TeamMatchStatistic(
             match_id=match.id,
-            team_id=int(row["home_team_id"]),
+            team_id=h_id,
             is_home=True,
             goals=int(row["home_goals"]),
             goals_conceded=int(row["away_goals"]),
@@ -306,7 +382,7 @@ def main() -> None:
         ))
         db.add(TeamMatchStatistic(
             match_id=match.id,
-            team_id=int(row["away_team_id"]),
+            team_id=a_id,
             is_home=False,
             goals=int(row["away_goals"]),
             goals_conceded=int(row["home_goals"]),
@@ -317,8 +393,9 @@ def main() -> None:
 
     db.commit()
     db.close()
-    print("[OK] Successfully seeded 2026-27 season (380 matches + 20 standings) into database!")
+    print("[OK] Successfully seeded 2026-27 season (380 real scheduled matches + 20 standings) into database!")
 
 
 if __name__ == "__main__":
     main()
+

@@ -68,11 +68,11 @@ Inspect club-specific metrics, venue home/away win rates, rolling goal averages,
 
 * **Historical Dataset**: Ingests **4,940 matches** across 35 clubs spanning 13 completed Premier League seasons (2013–14 through 2025–26) with cryptographic SHA-256 validation (`f911e7688817...`).
 * **Zero-Leakage Feature Engineering**: Strict `.shift(1)` temporal windows calculating sequential **Dynamic Elo ratings** ($K=28.0$, Home Field $+65$), schedule congestion/rest days, closing betting market odds, dynamic pre-match standings, and rolling form/xG metrics.
-* **Calibrated ML & Goal Engine**: Active **Calibrated Classifier** (`CalibratedClassifierCV` with Platt scaling) achieving **0.2099 Ranked Probability Score (RPS)** (97.8% of professional bookmaker market efficiency) coupled with a **Dixon-Coles (1997)** bivariate Poisson goal model.
-* **Draw-Blindness Solution**: Validation-tuned decision threshold raising Draw Recall from **0.00% to 50.96%** (+50.96% lift) for balanced 3-way outcome sensitivity.
+* **Calibrated ML & Goal Engine**: Active **Calibrated Classifier** (`CalibratedClassifierCV` with Platt scaling on Logistic Regression) achieving **0.2099 Ranked Probability Score (RPS)** (97.8% of professional bookmaker market efficiency) coupled with a **Dixon-Coles (1997)** bivariate Poisson goal model.
+* **Draw Calibration & Risk Flagging**: Well-calibrated probabilities evaluated via RPS and Log Loss, paired with an **Elevated Draw Risk** indicator ($P(\text{Draw}) \ge 0.250$) providing 1.34x draw detection lift without distorting 0-1 loss classification accuracy.
 * **Explainable AI (SHAP & Feature Drivers)**: Dynamic feature values decomposed per matchup with signed directional contributions (🟢 Boost / 🔴 Drag) and natural-language football reasoning.
-* **2026–27 Full Season Monte Carlo Simulation**: 10,000-iteration stochastic simulation predicting all **380 match fixtures** and final 20-team standings for the new 2026–27 season (including **Hull City**, **Coventry City**, and **Ipswich Town**).
-* **Full-Stack Architecture**: FastAPI REST backend with SQLAlchemy 2.0 repository layer, PostgreSQL database, React 19 + TypeScript frontend with Tailwind/CSS styling, and automated GitHub Actions CI.
+* **2026–27 Full Season Official Fixture Simulation**: 10,000-iteration stochastic simulation predicting all **380 official match fixtures** across matchweeks 1–38 and final 20-team standings for the 2026–27 season (including promoted **Hull City**, **Coventry City**, and **Ipswich Town**).
+* **Full-Stack Architecture**: FastAPI REST backend with SQLAlchemy 2.0 repository layer, PostgreSQL/SQLite database, React 19 + TypeScript frontend with Tailwind/CSS styling, and automated GitHub Actions CI with 37 backend tests and 7 frontend tests.
 
 ---
 
@@ -99,10 +99,10 @@ Inspect club-specific metrics, venue home/away win rates, rolling goal averages,
                           │                                           │
                           ▼                                           ▼
   ┌───────────────────────────────────────────────┐ ┌────────────────────────────────────────┐
-  │             POSTGRESQL DATABASE               │ │          MACHINE LEARNING ENGINE       │
-  │  • 34 Teams (inc. Promoted 2026-27 Clubs)     │ │  • Model: RandomForest (45 features)   │
+  │             DATABASE LAYER                    │ │          MACHINE LEARNING ENGINE       │
+  │  • 35 Teams (inc. Promoted 2026-27 Clubs)     │ │  • Model: Calibrated Logistic Reg (45f)│
   │  • 14 Seasons (2013-14 to 2026-27)            │ │  • Dynamic Elo System (K=28, Home=+65) │
-  │  • 4,940 Matches & 9,880 Match Statistics     │ │  • SHAP TreeExplainer & Marginal Drivers│
+  │  • 5,320 Matches (4,940 Hist + 380 Projected) │ │  • Dixon-Coles Goal Simulation Engine  │
   │  • 280 Season Standing Records                │ │  • 10,000-run Monte Carlo Simulator    │
   └───────────────────────────────────────────────┘ └────────────────────────────────────────┘
 ```
@@ -126,11 +126,16 @@ matchiq/
 │   │   └── services/              # PredictionService, FeatureBuilderService, ProvenanceService
 │   ├── Dockerfile                 # Backend container definition
 │   ├── requirements.txt           # Python dependencies
-│   └── tests/                     # 29 Pytest cases (SQLite isolated, feature parity)
+│   └── tests/                     # 37 Pytest cases (SQLite isolated, API, feature parity, real fixtures)
+│
+├── data/                          # Dataset & Fixture Archives
+│   ├── fixtures_2026_27.csv       # Official 38-matchweek 2026-27 fixture schedule
+│   ├── processed/                 # Processed multi-season match CSVs
+│   └── raw/                       # Raw downloads from football-data.co.uk
 │
 ├── frontend/                      # React 19 + TypeScript Frontend
 │   ├── src/
-│   │   ├── components/            # PredictionCard, ShapExplanationChart, TeamSelector, Layout
+│   │   ├── components/            # PredictionCard, TeamSelector, Layout, ui primitives
 │   │   ├── pages/                 # PredictPage, AnalyticsPage, Dashboard, MatchesPage, TeamsPage
 │   │   ├── services/              # Typed API client with React Query integration
 │   │   ├── test/                  # 7 Vitest frontend component tests
@@ -141,7 +146,7 @@ matchiq/
 │
 ├── ml/                            # Machine Learning Pipeline
 │   ├── features/                  # feature_engineering.py (45 zero-leakage features, Dynamic Elo)
-│   ├── models/                    # best_model.joblib, training_manifest.json, metrics.json
+│   ├── models/                    # best_model.joblib, dixon_coles.joblib, training_manifest.json
 │   └── training/                  # train.py (Candidate benchmark, validation selection, evaluation)
 │
 ├── reports/                       # Generated Analysis & Simulation Artifacts
@@ -152,7 +157,8 @@ matchiq/
 │   ├── fetch_real_data.py         # Ingests 13 seasons (2013-2026) from football-data.co.uk
 │   ├── simulate_2026_27_season.py # Live 380-match ML prediction & Monte Carlo simulation script
 │   ├── bootstrap.py               # Auto-boot initializer respecting database state
-│   └── e2e_functional_test.py     # End-to-end integration and latency benchmark
+│   ├── generate_calibration_plot.py # Reliability diagram generator
+│   └── compute_canonical_ece.py   # Standard ECE & MCE calculator
 │
 ├── .github/workflows/ci.yml       # GitHub Actions CI/CD Pipeline (Python tests, Vitest, linting)
 ├── docker-compose.yml             # Full-stack multi-container composition
@@ -319,30 +325,30 @@ For every matchup, MatchIQ decomposes predictions into explainable factors:
 
 ## 🔮 2026–27 Premier League Season Simulation
 
-MatchIQ simulated all **380 match fixtures** for the 2026–27 season featuring confirmed clubs (**Hull City**, **Coventry City**, and **Ipswich Town**; excluding relegated West Ham, Wolves, and Burnley) using a **10,000-run Monte Carlo simulation**.
+MatchIQ simulated all **380 official match fixtures** across matchweeks 1–38 for the 2026–27 season featuring confirmed clubs (**Hull City**, **Coventry City**, and **Ipswich Town**; excluding relegated West Ham, Wolves, and Burnley) using a **10,000-run Monte Carlo simulation**.
 
 | Pos | Club | MP | W | D | L | GF | GA | GD | Pts | Status / European Qualification |
 |:---:|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
-| **1** | 🏆 **Manchester City** | 38 | **24** | 7 | 7 | 80 | 50 | **+30** | **79** | 🔵 Champions League Winner |
-| **2** | 🥈 **Arsenal FC** | 38 | **22** | 8 | 8 | 78 | 54 | **+24** | **74** | 🔵 Champions League |
-| **3** | 🥉 **Manchester United** | 38 | **20** | 9 | 9 | 75 | 57 | **+18** | **69** | 🔵 Champions League |
-| **4** | **Liverpool FC** | 38 | **19** | 8 | 11 | 74 | 59 | **+15** | **65** | 🔵 Champions League |
-| **5** | **Aston Villa** | 38 | **17** | 9 | 12 | 70 | 63 | **+7** | **60** | 🟢 Europa League |
-| **6** | **AFC Bournemouth** | 38 | **16** | 9 | 13 | 70 | 64 | **+6** | **57** | 🟢 Europa League |
-| **7** | **Brighton & Hove Albion** | 38 | **15** | 9 | 14 | 68 | 66 | **+2** | **54** | 🟡 Conference League |
-| **8** | **Nottingham Forest** | 38 | **14** | 10 | 14 | 66 | 68 | **-2** | **52** | Mid-table |
-| **9** | **Chelsea FC** | 38 | **14** | 9 | 15 | 67 | 67 | **0** | **51** | Mid-table |
-| **10** | **Brentford FC** | 38 | **14** | 9 | 15 | 66 | 68 | **-2** | **51** | Mid-table |
-| **11** | **Newcastle United** | 38 | **14** | 9 | 15 | 65 | 68 | **-3** | **51** | Mid-table |
-| **12** | **Everton FC** | 38 | **13** | 9 | 16 | 65 | 69 | **-4** | **48** | Mid-table |
-| **13** | **Fulham FC** | 38 | **13** | 9 | 16 | 65 | 69 | **-4** | **48** | Mid-table |
-| **14** | **Leeds United** | 38 | **13** | 9 | 16 | 65 | 69 | **-4** | **48** | Mid-table |
-| **15** | **Sunderland AFC** | 38 | **12** | 9 | 17 | 64 | 70 | **-6** | **45** | Lower-table |
-| **16** | **Tottenham Hotspur** | 38 | **12** | 9 | 17 | 63 | 70 | **-7** | **45** | Lower-table |
-| **17** | **Crystal Palace** | 38 | **12** | 9 | 17 | 63 | 71 | **-8** | **45** | Safe from drop |
-| **18** | **Coventry City** | 38 | **9** | 10 | 19 | 58 | 74 | **-16** | **37** | 🔴 Relegation Zone |
-| **19** | **Ipswich Town** | 38 | **8** | 9 | 21 | 55 | 77 | **-22** | **33** | 🔴 Relegation Zone |
-| **20** | **Hull City** | 38 | **8** | 9 | 21 | 54 | 77 | **-23** | **33** | 🔴 Relegation Zone |
+| **1** | 🏆 **Manchester City** | 38 | **23** | 9 | 6 | 78 | 52 | **+26** | **78** | 🔵 Champions League Winner |
+| **2** | 🥈 **Arsenal FC** | 38 | **21** | 9 | 8 | 76 | 55 | **+21** | **72** | 🔵 Champions League |
+| **3** | 🥉 **Manchester United** | 38 | **17** | 9 | 12 | 71 | 63 | **+8** | **60** | 🔵 Champions League |
+| **4** | **Liverpool FC** | 38 | **17** | 9 | 12 | 71 | 63 | **+8** | **60** | 🔵 Champions League |
+| **5** | **AFC Bournemouth** | 38 | **17** | 9 | 12 | 71 | 63 | **+8** | **60** | 🟢 Europa League |
+| **6** | **Brighton & Hove Albion** | 38 | **16** | 9 | 13 | 70 | 65 | **+5** | **57** | 🟢 Europa League |
+| **7** | **Aston Villa** | 38 | **16** | 9 | 13 | 69 | 65 | **+4** | **57** | 🟡 Conference League |
+| **8** | **Brentford FC** | 38 | **15** | 9 | 14 | 68 | 67 | **+1** | **54** | Mid-table |
+| **9** | **Chelsea FC** | 38 | **14** | 9 | 15 | 68 | 67 | **+1** | **51** | Mid-table |
+| **10** | **Newcastle United** | 38 | **14** | 9 | 15 | 67 | 67 | **0** | **51** | Mid-table |
+| **11** | **Nottingham Forest** | 38 | **14** | 9 | 15 | 67 | 67 | **0** | **51** | Mid-table |
+| **12** | **Fulham FC** | 38 | **14** | 9 | 15 | 67 | 68 | **-1** | **51** | Mid-table |
+| **13** | **Leeds United** | 38 | **14** | 9 | 15 | 67 | 68 | **-1** | **51** | Mid-table |
+| **14** | **Everton FC** | 38 | **13** | 9 | 16 | 65 | 69 | **-4** | **48** | Mid-table |
+| **15** | **Crystal Palace** | 38 | **13** | 9 | 16 | 65 | 69 | **-4** | **48** | Safe from drop |
+| **16** | **Tottenham Hotspur** | 38 | **13** | 9 | 16 | 65 | 70 | **-5** | **48** | Safe from drop |
+| **17** | **Sunderland AFC** | 38 | **11** | 9 | 18 | 62 | 72 | **-10** | **42** | Safe from drop |
+| **18** | **Coventry City** | 38 | **10** | 9 | 19 | 60 | 74 | **-14** | **39** | 🔴 Relegation Zone |
+| **19** | **Ipswich Town** | 38 | **8** | 9 | 21 | 56 | 76 | **-20** | **33** | 🔴 Relegation Zone |
+| **20** | **Hull City** | 38 | **7** | 9 | 22 | 54 | 77 | **-23** | **30** | 🔴 Relegation Zone |
 
 Run simulation locally:
 ```bash
@@ -352,13 +358,14 @@ python scripts/simulate_2026_27_season.py
 Generated reports:
 * [`reports/premier_league_2026_27_predicted_standings.csv`](reports/premier_league_2026_27_predicted_standings.csv)
 * [`reports/premier_league_2026_27_predictions.csv`](reports/premier_league_2026_27_predictions.csv)
+* [`data/fixtures_2026_27.csv`](data/fixtures_2026_27.csv)
 
 ---
 
 ## 🧪 Testing & Quality Assurance
 
 ```bash
-# 1. Run all 29 Backend Pytest Cases (API, Feature Parity, Real Fixtures)
+# 1. Run all 37 Backend Pytest Cases (API, Feature Parity, Real Fixtures, Dixon-Coles)
 $env:DATABASE_URL="sqlite:///./matchiq.db"; python -m pytest backend/tests/ -v
 
 # 2. Run Frontend Component Tests (Vitest)

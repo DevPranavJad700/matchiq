@@ -1,17 +1,17 @@
-"""Demo data seeder for MatchIQ [SIMULATED DEMO DATA].
+"""Demo data seeder for MatchIQ [DEPRECATED — SIMULATED DATA ONLY].
 
-Generates a synthetic Premier League simulation dataset covering 3 seasons
-with 20 teams, valid round-robin matchday scheduling (10 matches per matchday,
-1 match per team per matchday), and realistic simulated statistics.
+DEPRECATED: This script is superseded by the authentic data pipeline:
+    1. python scripts/fetch_real_data.py   (downloads 13 seasons from football-data.co.uk)
+    2. python scripts/bootstrap.py         (seeds the database from processed CSV)
+    3. python scripts/simulate_2026_27_season.py  (projects current season)
 
-NOTICE: This generator produces SIMULATED / SYNTHETIC data for demo purposes.
-For authentic Premier League data, run: python scripts/fetch_real_data.py
+The project now uses 4,940 authentic Premier League matches (2013-14 through 2025-26).
+This file is retained for reference only and should NOT be run on the production database.
 
-Usage:
-    python scripts/seed_demo_data.py [--reset]
-
-Options:
-    --reset    Drop all existing data before seeding
+Original purpose (now obsolete):
+    Generates a synthetic Premier League simulation dataset covering 3 seasons
+    with 20 teams, valid round-robin matchday scheduling (10 matches per matchday,
+    1 match per team per matchday), and realistic simulated statistics.
 """
 
 import argparse

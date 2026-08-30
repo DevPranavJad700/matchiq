@@ -1,8 +1,8 @@
 {
   "name": "MatchIQ Model",
-  "version_tag": "logistic_regression-v20260830_091956",
+  "version_tag": "logistic_regression-v20260830_105145",
   "algorithm": "logistic_regression",
-  "training_date": "2026-08-30T09:19:56.988725+00:00",
+  "training_date": "2026-08-30T10:51:45.183016+00:00",
   "dataset_sha256": "f911e768881723e8bfcff643547e5864f04a38c9bfe6ae6fd091cccc1e1f3839",
   "model_sha256": "1576b24006c2044b78d2441cc9891ca9653d789261ad2377f7be62e2591cdf00",
   "accuracy": 0.4763,
