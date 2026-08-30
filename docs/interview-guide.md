@@ -27,47 +27,49 @@ This guide prepares you to present **MatchIQ** confidently during technical soft
 ## 2. Machine Learning & Data Pipeline Questions
 
 ### Q5: How did you prevent data leakage in feature engineering?
-**Answer:** Time-awareness is strictly enforced using pandas `.shift(1)` across all rolling window operations in `ml/features/feature_engineering.py`. For any match $M$ on date $T$, the rolling 5-match form and 10-match goals averages include *only* matches $1 \dots M-1$ played strictly before date $T$. Post-match statistics (e.g., match $M$'s goals/shots) are never in match $M$'s feature vector.
+**Answer:** Time-awareness is strictly enforced using pandas `.shift(1)` across all rolling window operations in `ml/features/feature_engineering.py`. For any match $M$ on date $T$, the rolling 5-match form, Elo ratings, and 10-match goals/xG averages include *only* matches $1 \dots M-1$ played strictly before date $T$. Post-match statistics (e.g., match $M$'s goals/shots) are never in match $M$'s feature vector.
 
 ### Q6: Why a Chronological Train/Val/Test Split instead of K-Fold Cross Validation?
-**Answer:** Random $K$-Fold cross-validation leaks temporal patterns (training on future matches to predict past matches). Football match prediction is a time-series forecasting problem. We sort matches chronologically and use the first 70% for training (2021–2023), 15% for validation, and the final 15% for testing (2024).
+**Answer:** Random $K$-Fold cross-validation leaks temporal patterns (training on future matches to predict past matches). Football match prediction is a sequential forecasting problem. We sort matches chronologically:
+* **Training (70%):** 3,458 matches (2013–14 through 2022–23 seasons)
+* **Validation (15%):** 741 matches (2023–24 and 2024–25 seasons)
+* **Untouched Test (15%):** 741 matches (2025–26 season)
 
-### Q7: Why Logistic Regression over Random Forest or XGBoost on real data?
-**Answer:** While XGBoost and Random Forest achieved high training accuracy, they over-indexed on majority classes (`HOME_WIN`) and produced uncalibrated probabilities with poor recall on `DRAW` results. Logistic Regression maintained balanced recall across all 3 outcomes (`HOME_WIN` F1: 0.63, `AWAY_WIN` F1: 0.62, `DRAW` F1: 0.36) and minimized Log Loss (0.9381), leading to the highest composite evaluation score.
+### Q7: Why was Random Forest selected over XGBoost on validation data?
+**Answer:** While XGBoost achieved marginally higher raw accuracy (57.09% vs. 56.28%), Random Forest was selected because our composite objective prioritizes probability calibration:
+$$\text{Score} = 0.6 \times \text{F1}_{\text{weighted}} + 0.4 \times (1 - \text{NormLogLoss})$$
+Random Forest achieved superior Log Loss (**0.9515** vs. 0.9572) and a superior Brier Score (**0.5621** vs. 0.5643). In sports analytics, downstream consumers (such as our 10,000-run Monte Carlo simulation) rely on continuous calibrated probability vectors rather than uncalibrated discrete predictions.
 
-### Q8: How does SHAP (Explainable AI) work in MatchIQ?
-**Answer:** We initialize `shap.TreeExplainer` or `shap.LinearExplainer` on the loaded model. For a prediction feature vector $X$, SHAP computes Shapley values based on cooperative game theory, determining the marginal contribution of each feature towards the predicted output class probability. We map these factors to human-readable explanations (e.g., "Home form advantage of +3.00 pts pushed prediction towards Home Win").
+### Q8: How does the model handle Draws, and why does the classification report show 0.00 Draw recall under argmax?
+**Answer:** Draws occur in ~24.5% of matches and represent high-variance equilibrium outcomes. In a calibrated 3-class model, draw probabilities hover between 22% and 32%. Under standard $\arg\max$ decision rules ($\hat{y} = \arg\max_k P_k$), the predicted mode is almost always either Home Win or Away Win because neither requires an extreme probability to exceed 33%. Rather than distorting calibration by hacking arbitrary discrete decision thresholds, MatchIQ preserves the underlying continuous probability distribution $[P(H), P(D), P(A)]$, which our Monte Carlo simulator samples from directly to reproduce accurate ~24% draw rates across the league.
 
-### Q9: How does MatchIQ perform against naive baselines?
-**Answer:** 
-* Naive Random Predictor: **33.3%** accuracy.
-* **MatchIQ Logistic Regression:** **50.0%** accuracy on untouched test data (with 0.4780 weighted F1, 0.9946 Log Loss, and 0.5952 Brier score).
+### Q9: How does SHAP (Explainable AI) work in MatchIQ?
+**Answer:** We initialize `shap.TreeExplainer` on the loaded Random Forest model. For a prediction feature vector $X$, SHAP computes Shapley values based on cooperative game theory, determining the marginal contribution of each feature towards the predicted output class probability. We map these factors to natural language explanations (e.g., *"Home team Elo rating advantage: +142 pts"* or *"Visiting club has 6 days of match recovery"*).
+
+### Q10: How does MatchIQ perform against naive baselines on untouched test data?
+**Answer:** On the strictly held-out 741-match Test Set:
+* **Naive Majority Baseline (Always Home):** **41.70%** accuracy, 0.2454 F1, 1.0848 Log Loss, 0.6574 Brier Score.
+* **MatchIQ Random Forest:** **49.66%** accuracy (**+7.96% lift**), **0.4168 weighted F1** (+0.1714 lift), **1.0226 Log Loss** (-0.0622 improvement), and **0.6134 Brier Score** (-0.0440 improvement).
 
 ---
 
 ## 3. Frontend & Infrastructure Questions
 
-### Q10: How does TanStack Query (React Query) improve UI performance?
+### Q11: How does TanStack Query (React Query) improve UI performance?
 **Answer:** TanStack Query handles server-state caching, automatic refetching, deduplication of in-flight requests, and optimistic updates. Team lists and league metadata are cached with a 5-minute `staleTime`, preventing redundant network requests when switching tabs.
 
-### Q11: How does Docker Compose networking work?
+### Q12: How does Docker Compose networking work?
 **Answer:** Docker Compose creates an isolated bridge network (`matchiq_default`). Containers communicate via service names as DNS hosts (`postgres:5432`, `backend:8000`). Nginx acts as a reverse proxy in the frontend container, proxying `/api/*` traffic to `http://backend:8000/`.
 
-### Q12: How would you scale MatchIQ for high traffic?
+### Q13: How would you scale MatchIQ for high traffic?
 **Answer:**
 1. **API Scaling:** Run FastAPI inside Docker behind a load balancer (AWS ALB / Nginx) using `gunicorn` with multiple `uvicorn.workers.UvicornWorker` workers.
 2. **Prediction Caching:** Cache team feature vectors and prediction results in Redis with a 1-hour TTL.
 3. **Database Read Replicas:** Route read requests (`GET /teams`, `/matches`) to PostgreSQL read replicas.
 4. **Model Serving:** Offload heavy ML inference to Triton Inference Server or TorchServe if scaling to real-time live match micro-updates.
 
-### Q13: What are the main limitations of the system?
+### Q14: What are the main limitations and next steps?
 **Answer:**
-1. **Player-level Data:** Currently uses team-level statistics; lacks individual player injury/suspension tracking.
-2. **Live In-Play Odds:** Does not incorporate real-time betting market odds (e.g., Pinnacle closing lines).
-3. **Weather & Travel:** Weather conditions and travel distance are not included in the feature set.
-
-### Q14: What would you improve next?
-**Answer:**
-1. Integrate player lineups and injury news via an external sports API.
-2. Add Elo rating features alongside rolling averages.
-3. Implement model calibration curve visualizations (Reliability Diagrams) on the analytics page.
+1. **Lineup & Injury Feed:** Integrate real-time starting lineups and key player injury reports.
+2. **Market Odds Benchmarking:** Incorporate closing betting market odds (Pinnacle/Betfair) to benchmark against market consensus efficiency.
+3. **Reliability Diagrams:** Add interactive calibration curve visualizations to the analytics dashboard.
