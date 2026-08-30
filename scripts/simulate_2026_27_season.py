@@ -1,15 +1,20 @@
 """MatchIQ 2026-27 Premier League Season Simulation Script.
 
 Executes all 380 match predictions using the trained production ML model
-(ml/models/best_model.joblib) and generates the full standings table.
+(ml/models/best_model.joblib), runs a 10,000-run Monte Carlo simulation,
+and seeds the 2026-27 Season, 380 Projected Matches, and Simulated Standings into the database.
 """
 
+from datetime import datetime, timezone
+import json
 import os
-import sys
 from pathlib import Path
+import sys
 
-# Add backend directory to path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+# Add backend and root to path
+ROOT_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT_DIR / "backend"))
+sys.path.insert(0, str(ROOT_DIR))
 
 import numpy as np
 import pandas as pd
@@ -17,13 +22,13 @@ from sqlalchemy import select
 
 from app.db.session import SessionLocal
 from app.ml.model_loader import get_feature_names, get_model, load_model
-from app.models.orm_models import Team
+from app.models.orm_models import League, Match, Season, Standing, Team, TeamMatchStatistic
 from app.services.prediction_service import PredictionService
 
 
 def main() -> None:
     print("=" * 70)
-    print("MATCHIQ 2026-27 PREMIER LEAGUE FULL SEASON ML SIMULATION")
+    print("MATCHIQ 2026-27 PREMIER LEAGUE FULL SEASON ML SIMULATION & SEEDING")
     print("=" * 70)
 
     # 1. Load active ML Model and features
@@ -58,6 +63,20 @@ def main() -> None:
         "Ipswich Town",
     ]
 
+    # Ensure League 1 exists
+    league = db.execute(select(League).where(League.id == 1)).scalar_one_or_none()
+    if not league:
+        league = League(id=1, name="Premier League", short_name="PL", country="England")
+        db.add(league)
+        db.flush()
+
+    # Ensure Coventry City exists if promoted for 2026-27
+    cov = db.execute(select(Team).where(Team.name.ilike("%Coventry%"))).scalars().first()
+    if not cov:
+        cov = Team(name="Coventry City", short_name="COV", country="England", league_id=1)
+        db.add(cov)
+        db.flush()
+
     teams = []
     for name in target_names:
         t = db.execute(select(Team).where(Team.name.ilike(f"%{name}%"))).scalars().first()
@@ -66,7 +85,7 @@ def main() -> None:
         else:
             raise ValueError(f"Team {name} not found in database!")
 
-    print(f"Verified {len(teams)} Premier League Clubs for 2026-27 Season:")
+    print(f"\nVerified {len(teams)} Premier League Clubs for 2026-27 Season:")
     for i, t in enumerate(teams, 1):
         print(f"   {i:2d}. {t.name:<25} (ID: {t.id})")
 
@@ -86,8 +105,17 @@ def main() -> None:
             p_d = pred.probabilities.draw
             p_a = pred.probabilities.away_win
 
+            # Most likely exact scoreline from Dixon-Coles
+            top_score = pred.top_scorelines[0].score if pred.top_scorelines else "1-0"
+            try:
+                hg, ag = map(int, top_score.split("-"))
+            except Exception:
+                hg, ag = (1, 0) if pred.predicted_result == "HOME_WIN" else ((0, 1) if pred.predicted_result == "AWAY_WIN" else (1, 1))
+
             matches.append({
                 "match_no": match_no,
+                "home_team_id": home_t.id,
+                "away_team_id": away_t.id,
                 "home_team": home_t.name,
                 "away_team": away_t.name,
                 "home_win_pct": f"{p_h * 100:.1f}%",
@@ -96,7 +124,10 @@ def main() -> None:
                 "home_win_prob": round(p_h, 4),
                 "draw_prob": round(p_d, 4),
                 "away_win_prob": round(p_a, 4),
+                "home_goals": hg,
+                "away_goals": ag,
                 "predicted_outcome": "Home Win" if pred.predicted_result == "HOME_WIN" else ("Away Win" if pred.predicted_result == "AWAY_WIN" else "Draw"),
+                "result_code": "H" if pred.predicted_result == "HOME_WIN" else ("A" if pred.predicted_result == "AWAY_WIN" else "D"),
                 "confidence": pred.confidence,
                 "top_driver_1": pred.explanation[0].description if len(pred.explanation) > 0 else "N/A",
                 "top_driver_2": pred.explanation[1].description if len(pred.explanation) > 1 else "N/A",
@@ -113,8 +144,7 @@ def main() -> None:
     except PermissionError:
         alt_path = Path("reports/premier_league_2026_27_predictions_sim.csv").resolve()
         matches_df.to_csv(alt_path, index=False)
-        print("File locked, saved predictions to alternate file:")
-        print(f"   {alt_path}")
+        print(f"File locked, saved predictions to alternate file: {alt_path}")
 
     # 4. Monte Carlo Season Table Simulation (10,000 runs)
     print("\n--- Running 10,000 Monte Carlo Season Simulations from Model Probabilities ---")
@@ -169,19 +199,21 @@ def main() -> None:
 
     # Aggregate standings table
     final_rows = []
-    for t in team_names:
-        w = int(round(np.mean(sim_w[t])))
-        d = int(round(np.mean(sim_d[t])))
+    for t in teams:
+        tname = t.name
+        w = int(round(np.mean(sim_w[tname])))
+        d = int(round(np.mean(sim_d[tname])))
         losses = 38 - w - d
-        gf = int(round(np.mean(sim_gf[t])))
-        ga = int(round(np.mean(sim_ga[t])))
+        gf = int(round(np.mean(sim_gf[tname])))
+        ga = int(round(np.mean(sim_ga[tname])))
         gd = gf - ga
         pts = w * 3 + d
         form_p = [w / 38, d / 38, losses / 38]
         last5 = "".join(np.random.choice(["W", "D", "L"], size=5, p=form_p))
 
         final_rows.append({
-            "Club": t,
+            "team_id": t.id,
+            "Club": tname,
             "MP": 38,
             "W": w,
             "D": d,
@@ -205,11 +237,87 @@ def main() -> None:
     except PermissionError:
         alt_path = Path("reports/premier_league_2026_27_predicted_standings_sim.csv").resolve()
         standings_df.to_csv(alt_path)
-        print("File locked, saved Standings Table to:")
-        print(f"   {alt_path}\n")
+        print(f"File locked, saved Standings Table to: {alt_path}\n")
 
-    print(standings_df.to_string())
+    print(standings_df[["Club", "MP", "W", "D", "L", "GF", "GA", "GD", "Pts", "Last 5"]].to_string())
+
+    # 5. Seed 2026-27 Season into Database
+    print("\n--- Seeding 2026-27 Projected Season & Standings into Database ---")
+    season_2627 = db.execute(select(Season).where(Season.year == "2026-27")).scalar_one_or_none()
+    if not season_2627:
+        season_2627 = Season(league_id=league.id, year="2026-27")
+        db.add(season_2627)
+        db.flush()
+
+    # Clear prior 2026-27 matches and standings
+    db.query(Standing).where(Standing.season_id == season_2627.id).delete()
+    prior_matches = db.execute(select(Match).where(Match.season_id == season_2627.id)).scalars().all()
+    for m in prior_matches:
+        db.query(TeamMatchStatistic).where(TeamMatchStatistic.match_id == m.id).delete()
+    db.query(Match).where(Match.season_id == season_2627.id).delete()
+    db.flush()
+
+    # Insert 2026-27 Standings
+    for pos, row in standings_df.reset_index().iterrows():
+        db.add(Standing(
+            season_id=season_2627.id,
+            team_id=int(row["team_id"]),
+            position=int(row["Pos"]),
+            played=int(row["MP"]),
+            won=int(row["W"]),
+            drawn=int(row["D"]),
+            lost=int(row["L"]),
+            goals_for=int(row["GF"]),
+            goals_against=int(row["GA"]),
+            goal_difference=int(row["GD"]),
+            points=int(row["Pts"]),
+        ))
+
+    # Insert 380 Projected Matches
+    # Arrange into 38 matchweeks (10 matches per matchweek)
+    from datetime import timedelta
+    base_season_start = datetime(2026, 8, 15, 15, 0, tzinfo=timezone.utc)
+    for idx, row in matches_df.iterrows():
+        matchday = (idx // 10) + 1
+        m_date = base_season_start + timedelta(days=int((matchday - 1) * 7))
+        match = Match(
+            season_id=season_2627.id,
+            league_id=league.id,
+            home_team_id=int(row["home_team_id"]),
+            away_team_id=int(row["away_team_id"]),
+            match_date=m_date,
+            home_score=int(row["home_goals"]),
+            away_score=int(row["away_goals"]),
+            result=str(row["result_code"]),
+            matchday=matchday,
+        )
+        db.add(match)
+        db.flush()
+
+        db.add(TeamMatchStatistic(
+            match_id=match.id,
+            team_id=int(row["home_team_id"]),
+            is_home=True,
+            goals=int(row["home_goals"]),
+            goals_conceded=int(row["away_goals"]),
+            shots=12,
+            shots_on_target=5,
+            xg=1.5,
+        ))
+        db.add(TeamMatchStatistic(
+            match_id=match.id,
+            team_id=int(row["away_team_id"]),
+            is_home=False,
+            goals=int(row["away_goals"]),
+            goals_conceded=int(row["home_goals"]),
+            shots=9,
+            shots_on_target=3,
+            xg=1.1,
+        ))
+
+    db.commit()
     db.close()
+    print("[OK] Successfully seeded 2026-27 season (380 matches + 20 standings) into database!")
 
 
 if __name__ == "__main__":

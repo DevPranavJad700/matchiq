@@ -51,7 +51,7 @@ class TeamRepository:
             select(Standing)
             .options(joinedload(Standing.season))
             .where(Standing.team_id == team_id)
-            .order_by(Standing.updated_at.desc())
+            .order_by(Standing.season_id.desc(), Standing.updated_at.desc())
             .limit(1)
         )
         return self.db.execute(stmt).unique().scalar_one_or_none()

@@ -64,7 +64,7 @@ export function TeamDetailPage() {
             <div>
               <h1 className="text-2xl font-bold text-[#F4F5F2]">{team.name}</h1>
               <p className="text-[#9DA4AA] text-xs mt-0.5">
-                {team.country} · Premier League {stats?.season_year ?? '2023-24'}
+                {team.country} · Premier League {stats?.season_year ?? '2025-26'}
               </p>
             </div>
           </div>
