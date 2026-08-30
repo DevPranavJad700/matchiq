@@ -8,7 +8,6 @@ Models home and away goals as Poisson processes with team attack/defense ratings
 home pitch advantage, time-decay weighting, and low-score bivariate correlation.
 """
 
-import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
@@ -65,7 +64,7 @@ class DixonColesEngine:
         """
         logger.info(f"Fitting Dixon-Coles engine on {len(df)} matches...")
         matches_df = df.dropna(subset=["home_goals", "away_goals", "home_team_name", "away_team_name"]).copy()
-        
+
         # Build team dictionary
         self.teams = sorted(list(set(matches_df["home_team_name"].unique()) | set(matches_df["away_team_name"].unique())))
         self.team_to_idx = {t: i for i, t in enumerate(self.teams)}

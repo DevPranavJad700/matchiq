@@ -29,7 +29,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import sklearn
-from sklearn.calibration import CalibratedClassifierCV, calibration_curve
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import (
     GradientBoostingClassifier,
     RandomForestClassifier,
