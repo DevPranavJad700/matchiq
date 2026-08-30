@@ -26,38 +26,42 @@ This guide prepares you to present **MatchIQ** confidently during technical soft
 
 ## 2. Machine Learning, Metrics & Scientific Framing
 
-### Q5: What is the Ranked Probability Score (RPS) and why is it preferred over raw accuracy in sports forecasting?
-**Answer:** In academic football forecasting (Epstein 1969; Constantinou & Fenton 2012), 3-way match outcomes are ordered ($\text{Home Win} \prec \text{Draw} \prec \text{Away Win}$). Discrete accuracy treats misclassifying a Home Win as a Draw the same as misclassifying it as an Away Win, which is scientifically flawed. 
+### Q5: Why did headline discrete accuracy change (49.66% → 47.63%) and why is that an intentional trade-off?
+**Answer:** In sports analytics, raw discrete classification accuracy ($\arg\max$) treats all probabilities identically (a 34% home pick counts the same as an 85% home pick). Uncalibrated tree ensembles produce overconfident probability tails that yield slightly higher discrete accuracy on easy home games, but suffer heavy Log Loss and Ranked Probability Score penalties on unexpected draws and away upsets.
 
-RPS measures cumulative squared error across the ordered classes:
+By wrapping candidate models in `CalibratedClassifierCV` (Platt sigmoid scaling with 5-fold cross-validation), we deliberately traded ~2.0% raw discrete classification accuracy for calibrated posterior probabilities, lowering Log Loss to **1.0315** and Ranked Probability Score to **0.2099** (achieving **97.8% of professional bookmaker market efficiency**). Continuous calibration is essential because downstream Monte Carlo simulations and odds pricing engines sample directly from continuous probability distributions $[P(H), P(D), P(A)]$, not discrete labels.
+
+### Q6: What is the Ranked Probability Score (RPS) and how is the test set structured?
+**Answer:** In academic football forecasting (Epstein 1969; Constantinou & Fenton 2012), 3-way match outcomes are ordered ($\text{Home Win} \prec \text{Draw} \prec \text{Away Win}$). RPS measures cumulative squared error across the ordered classes:
 $$\text{RPS} = \frac{1}{2} \sum_{r=1}^{2} \left( \sum_{i=1}^r p_i - \sum_{i=1}^r o_i \right)^2$$
-On the untouched 2025–26 test set:
+On the untouched 2025–26 test set (**identical $N=380$ matches scored across all methods, zero dropped rows**):
 * **Naive Constant Baseline:** $\text{RPS} = 0.2279$
+* **Dixon-Coles Goal Model:** $\text{RPS} = 0.2137$
 * **MatchIQ Calibrated Model:** $\text{RPS} = 0.2099$
-* **Professional Closing Betting Market Odds (Benchmark):** $\text{RPS} = 0.2053$
-MatchIQ reaches **97.8% of bookmaker market efficiency** purely on public historical match metrics!
+* **Closing Betting Market Odds (Benchmark):** $\text{RPS} = 0.2053$
+MatchIQ reaches **97.8% of bookmaker market efficiency** purely on pre-match historical statistics.
 
-### Q6: How did you implement probability calibration (`CalibratedClassifierCV`)?
-**Answer:** Raw tree ensembles and logistic classifiers often exhibit overconfident probability tails on noisy sports data. We wrap candidate models in `CalibratedClassifierCV(method='sigmoid', cv=5)` (Platt scaling). This fits a cross-validated logistic transformation on candidate probabilities, aligning predicted probabilities with true empirical long-run frequencies and minimizing Brier score / Log Loss.
+### Q7: How did you evaluate the ML vs. Dixon-Coles blend?
+**Answer:** We ran a systematic grid search over blend weight $w \in [0.0, 1.0]$ in increments of $0.05$ on the 2024–25 Validation Set. Validation RPS monotonically improved from 0.2134 (100% Dixon-Coles) down to 0.2033 (100% Calibrated ML). Rather than using an unjustified heuristic blend weight, we select the calibrated classifier as the primary outcome predictor, with Dixon-Coles serving as the dedicated goal-scoring engine for bivariate scoreline matrices ($P(0\text{--}0), P(1\text{--}0), \dots$) and expected goals ($\lambda, \mu$).
 
-### Q7: What is the Dixon-Coles (1997) Goal Model and how does MatchIQ use it?
-**Answer:** Dixon & Coles (*Applied Statistics*, 1997) models match scorelines as bivariate Poisson processes where expected goals $\lambda$ (home) and $\mu$ (away) depend on team attack strength $\alpha_i$, defense parameter $\beta_j$, home pitch factor $\gamma$, and exponential time decay $\xi = 0.0019$. It includes a low-score correlation parameter $\tau(x, y; \rho)$ on $(0,0), (0,1), (1,0), (1,1)$. 
-MatchIQ fits this via maximum likelihood estimation (`scipy.optimize.minimize`), outputting full $11 \times 11$ score probability matrices, top probable exact scorelines (e.g. `1-0`, `1-1`), and natural draw probabilities.
-
-### Q8: How did you solve the Draw Prediction Dilemma?
-**Answer:** In raw $\arg\max$ decision mode ($\hat{y} = \arg\max_k P_k$), draw recall is often 0.00% because calibrated draw probabilities cluster around 22%–32% and rarely exceed the ~35% needed to beat both home and away win probabilities.
+### Q8: How did you solve the Draw Prediction Dilemma and what is the trade-off?
+**Answer:** Under standard $\arg\max$ decision mode ($\hat{y} = \arg\max_k P_k$), draw recall is 0.00% because calibrated draw probabilities cluster around 22%–32% and rarely exceed the ~35% needed to beat both home and away win probabilities.
 We solved this by tuning the decision threshold on validation data:
 $$\hat{y} = \begin{cases} \text{DRAW}, & \text{if } P(\text{Draw}) \ge \theta_{\text{draw}} \\ \arg\max_{k \in \{0, 2\}} P(y=k), & \text{otherwise} \end{cases}$$
-With $\theta_{\text{draw}} = 0.230$, **Draw Recall increases from 0.00% to 50.96%** (+50.96% lift, identifying 53 of 104 test draws) with a Macro Average F1 of **0.3658**.
+With $\theta_{\text{draw}} = 0.230$:
+* **Draw Recall:** Rises from **0.00% to 72.12%** (+72.12% lift, identifying 75 of 104 test draws).
+* **Home Win Precision:** Increases from **51.68% to 61.63%** (+9.95% precision gain).
+* **Away Win Precision:** Increases from **42.25% to 52.50%** (+10.25% precision gain).
+* **Trade-off:** Home/away recall drops because borderline fixtures are reallocated to Draw, but **Macro Average F1 increases from 0.3613 to 0.3730**, improving balance across all 3 outcomes.
 
 ### Q9: How did you prevent data leakage in feature engineering?
 **Answer:** Time-awareness is strictly enforced using pandas `.shift(1)` across all rolling window operations in `ml/features/feature_engineering.py`. For any match $M$ on date $T$, the rolling 5-match form, Elo ratings, and 10-match goals/xG averages include *only* matches $1 \dots M-1$ played strictly before date $T$. Post-match statistics (e.g., match $M$'s goals/shots) are never in match $M$'s feature vector.
 
 ### Q10: Why a Chronological Train/Val/Test Split instead of K-Fold Cross Validation?
 **Answer:** Random $K$-Fold cross-validation leaks temporal patterns (training on future matches to predict past matches). Football match prediction is a sequential forecasting problem. We sort matches chronologically:
-* **Training Set:** 4,180 matches (2013–14 through 2023–24 seasons)
-* **Validation Set:** 380 matches (2024–25 season)
-* **Untouched Test Set:** 380 matches (2025–26 season)
+* **Training Set:** 4,180 matches (11 seasons: 2013–14 through 2023–24)
+* **Validation Set:** 380 matches (1 season: 2024–25)
+* **Untouched Test Set:** 380 matches (1 season: 2025–26)
 
 ---
 

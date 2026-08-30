@@ -1,10 +1,10 @@
 {
   "manifest_version": "2.0.0",
   "model_name": "MatchIQ Match Predictor",
-  "version_tag": "logistic_regression-v20260830_085118",
+  "version_tag": "logistic_regression-v20260830_090409",
   "algorithm": "logistic_regression",
-  "training_timestamp": "2026-08-30T08:51:18.637889+00:00",
-  "git_commit": "4918f1c6f8790ca2f7e22436fabc230e003722ff",
+  "training_timestamp": "2026-08-30T09:04:09.349763+00:00",
+  "git_commit": "8892a909b17f26a08145abe308cb1ade0819c137",
   "reproducibility": {
     "random_seed": 42,
     "python_version": "3.13.3",
@@ -49,10 +49,10 @@
       "rps": 0.2099
     },
     "blended_dixon_coles": {
-      "accuracy": 0.4684,
-      "log_loss": 1.0291,
-      "brier_score": 0.6191,
-      "rps": 0.2097
+      "accuracy": 0.4763,
+      "log_loss": 1.0315,
+      "brier_score": 0.6205,
+      "rps": 0.2099
     }
   },
   "evaluation": {

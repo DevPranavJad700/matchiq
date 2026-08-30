@@ -336,6 +336,35 @@ def tune_draw_threshold(y_val: np.ndarray, y_proba_val: np.ndarray) -> float:
     return float(best_theta)
 
 
+def tune_blend_weight(
+    y_val: np.ndarray,
+    ml_proba_val: np.ndarray,
+    dc_proba_val: np.ndarray,
+) -> Tuple[float, float, List[Dict[str, float]]]:
+    """Perform grid search over blend weight w in [0.0, 1.0] to minimize validation RPS."""
+    best_w = 0.5
+    best_rps = 999.0
+    sweep_results = []
+    for w in np.linspace(0.0, 1.0, 21):
+        w = round(float(w), 2)
+        blend_val = w * ml_proba_val + (1.0 - w) * dc_proba_val
+        rps = compute_rps(y_val, blend_val)
+        ll = log_loss(y_val, blend_val)
+        acc = accuracy_score(y_val, np.argmax(blend_val, axis=1))
+        sweep_results.append({
+            "weight_ml": w,
+            "weight_dixon_coles": round(1.0 - w, 2),
+            "val_rps": round(float(rps), 4),
+            "val_log_loss": round(float(ll), 4),
+            "val_accuracy": round(float(acc), 4),
+        })
+        if rps < best_rps:
+            best_rps = rps
+            best_w = w
+    logger.info(f"Optimal validation blend weight: w_ML = {best_w:.2f}, w_DC = {1.0-best_w:.2f} (Val RPS = {best_rps:.4f})")
+    return best_w, best_rps, sweep_results
+
+
 def select_best_model(results: List[dict]) -> str:
     """Select best model using multi-metric composite score on VALIDATION set."""
     min_ll = min(r["log_loss"] for r in results)
@@ -454,10 +483,11 @@ def train() -> None:
 
     best_name = select_best_model(val_metrics)
 
-    # 7. Tune draw threshold on validation set for optimal 3-way recall
+    # 7. Tune draw threshold and blend weight on validation set
     best_val_model = calibrated_models[best_name]
     best_val_proba = best_val_model.predict_proba(X_val)
     optimal_draw_threshold = tune_draw_threshold(y_val, best_val_proba)
+    best_blend_w, best_val_blend_rps, blend_sweep = tune_blend_weight(y_val, best_val_proba, dc_val_probs)
 
     # 8. Retrain winner on combined Train + Validation data
     logger.info(f"\n--- Retraining Winner ({best_name}) on Train + Validation Data ---")
@@ -494,13 +524,13 @@ def train() -> None:
     dc_test_acc = accuracy_score(y_test, np.argmax(dc_test_probs, axis=1))
     logger.info(f"Dixon-Coles Test Metrics — Acc: {dc_test_acc:.4f}, LogLoss: {dc_test_ll:.4f}, RPS: {dc_test_rps:.4f}")
 
-    # Evaluate Blended ML + Dixon-Coles Ensemble on Test set
-    blended_test_probs = 0.65 * cal_final.predict_proba(X_test) + 0.35 * dc_test_probs
+    # Evaluate Blended ML + Dixon-Coles Ensemble on Test set with validation-tuned weight
+    blended_test_probs = best_blend_w * cal_final.predict_proba(X_test) + (1.0 - best_blend_w) * dc_test_probs
     blend_acc = accuracy_score(y_test, np.argmax(blended_test_probs, axis=1))
     blend_ll = log_loss(y_test, blended_test_probs)
     blend_brier = compute_brier_score(y_test, blended_test_probs)
     blend_rps = compute_rps(y_test, blended_test_probs)
-    logger.info(f"\n--- Blended Model (65% Calibrated RF + 35% Dixon-Coles) Test Performance ---")
+    logger.info(f"\n--- Optimal Blended Model ({int(best_blend_w*100)}% ML + {int((1-best_blend_w)*100)}% Dixon-Coles) Test Performance ---")
     logger.info(f"  Accuracy:    {blend_acc:.4f}")
     logger.info(f"  Log Loss:    {blend_ll:.4f}")
     logger.info(f"  Brier Score: {blend_brier:.4f}")
@@ -563,6 +593,9 @@ def train() -> None:
             "rps": round(float(blend_rps), 4),
         },
         "optimal_draw_threshold": round(optimal_draw_threshold, 4),
+        "optimal_blend_weight_ml": round(float(best_blend_w), 2),
+        "optimal_blend_weight_dixon_coles": round(float(1.0 - best_blend_w), 2),
+        "blend_validation_sweep": blend_sweep,
         "validation_models": val_metrics,
         "train_size": len(train_df),
         "val_size": len(val_df),

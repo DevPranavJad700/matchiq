@@ -1,6 +1,6 @@
 {
   "algorithm": "logistic_regression",
-  "training_date": "2026-08-30T08:51:18.637889+00:00",
+  "training_date": "2026-08-30T09:04:09.349763+00:00",
   "dataset_sha256": "f911e768881723e8bfcff643547e5864f04a38c9bfe6ae6fd091cccc1e1f3839",
   "model_sha256": "1576b24006c2044b78d2441cc9891ca9653d789261ad2377f7be62e2591cdf00",
   "baseline": {
@@ -25,12 +25,163 @@
     "rps": 0.2137
   },
   "blended_ensemble_test": {
-    "accuracy": 0.4684,
-    "log_loss": 1.0291,
-    "brier_score": 0.6191,
-    "rps": 0.2097
+    "accuracy": 0.4763,
+    "log_loss": 1.0315,
+    "brier_score": 0.6205,
+    "rps": 0.2099
   },
   "optimal_draw_threshold": 0.23,
+  "optimal_blend_weight_ml": 1.0,
+  "optimal_blend_weight_dixon_coles": 0.0,
+  "blend_validation_sweep": [
+    {
+      "weight_ml": 0.0,
+      "weight_dixon_coles": 1.0,
+      "val_rps": 0.2134,
+      "val_log_loss": 1.0171,
+      "val_accuracy": 0.4868
+    },
+    {
+      "weight_ml": 0.05,
+      "weight_dixon_coles": 0.95,
+      "val_rps": 0.2125,
+      "val_log_loss": 1.0143,
+      "val_accuracy": 0.4868
+    },
+    {
+      "weight_ml": 0.1,
+      "weight_dixon_coles": 0.9,
+      "val_rps": 0.2116,
+      "val_log_loss": 1.0118,
+      "val_accuracy": 0.4974
+    },
+    {
+      "weight_ml": 0.15,
+      "weight_dixon_coles": 0.85,
+      "val_rps": 0.2108,
+      "val_log_loss": 1.0094,
+      "val_accuracy": 0.4947
+    },
+    {
+      "weight_ml": 0.2,
+      "weight_dixon_coles": 0.8,
+      "val_rps": 0.21,
+      "val_log_loss": 1.0072,
+      "val_accuracy": 0.4947
+    },
+    {
+      "weight_ml": 0.25,
+      "weight_dixon_coles": 0.75,
+      "val_rps": 0.2093,
+      "val_log_loss": 1.0051,
+      "val_accuracy": 0.5
+    },
+    {
+      "weight_ml": 0.3,
+      "weight_dixon_coles": 0.7,
+      "val_rps": 0.2086,
+      "val_log_loss": 1.0032,
+      "val_accuracy": 0.5
+    },
+    {
+      "weight_ml": 0.35,
+      "weight_dixon_coles": 0.65,
+      "val_rps": 0.208,
+      "val_log_loss": 1.0014,
+      "val_accuracy": 0.5053
+    },
+    {
+      "weight_ml": 0.4,
+      "weight_dixon_coles": 0.6,
+      "val_rps": 0.2073,
+      "val_log_loss": 0.9997,
+      "val_accuracy": 0.5053
+    },
+    {
+      "weight_ml": 0.45,
+      "weight_dixon_coles": 0.55,
+      "val_rps": 0.2068,
+      "val_log_loss": 0.9982,
+      "val_accuracy": 0.5079
+    },
+    {
+      "weight_ml": 0.5,
+      "weight_dixon_coles": 0.5,
+      "val_rps": 0.2063,
+      "val_log_loss": 0.9968,
+      "val_accuracy": 0.5105
+    },
+    {
+      "weight_ml": 0.55,
+      "weight_dixon_coles": 0.45,
+      "val_rps": 0.2058,
+      "val_log_loss": 0.9956,
+      "val_accuracy": 0.5184
+    },
+    {
+      "weight_ml": 0.6,
+      "weight_dixon_coles": 0.4,
+      "val_rps": 0.2053,
+      "val_log_loss": 0.9944,
+      "val_accuracy": 0.5184
+    },
+    {
+      "weight_ml": 0.65,
+      "weight_dixon_coles": 0.35,
+      "val_rps": 0.2049,
+      "val_log_loss": 0.9934,
+      "val_accuracy": 0.5184
+    },
+    {
+      "weight_ml": 0.7,
+      "weight_dixon_coles": 0.3,
+      "val_rps": 0.2046,
+      "val_log_loss": 0.9925,
+      "val_accuracy": 0.5158
+    },
+    {
+      "weight_ml": 0.75,
+      "weight_dixon_coles": 0.25,
+      "val_rps": 0.2042,
+      "val_log_loss": 0.9918,
+      "val_accuracy": 0.5158
+    },
+    {
+      "weight_ml": 0.8,
+      "weight_dixon_coles": 0.2,
+      "val_rps": 0.204,
+      "val_log_loss": 0.9911,
+      "val_accuracy": 0.5158
+    },
+    {
+      "weight_ml": 0.85,
+      "weight_dixon_coles": 0.15,
+      "val_rps": 0.2037,
+      "val_log_loss": 0.9906,
+      "val_accuracy": 0.5184
+    },
+    {
+      "weight_ml": 0.9,
+      "weight_dixon_coles": 0.1,
+      "val_rps": 0.2035,
+      "val_log_loss": 0.9902,
+      "val_accuracy": 0.5237
+    },
+    {
+      "weight_ml": 0.95,
+      "weight_dixon_coles": 0.05,
+      "val_rps": 0.2034,
+      "val_log_loss": 0.99,
+      "val_accuracy": 0.5184
+    },
+    {
+      "weight_ml": 1.0,
+      "weight_dixon_coles": 0.0,
+      "val_rps": 0.2033,
+      "val_log_loss": 0.9898,
+      "val_accuracy": 0.5158
+    }
+  ],
   "validation_models": [
     {
       "name": "logistic_regression",
