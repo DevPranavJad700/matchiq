@@ -95,7 +95,7 @@ export function PredictionCard({ prediction, compact = false }: PredictionCardPr
               {/* Elevated Draw Risk: Flagged when P(Draw) >= 0.250 (>=90th percentile of draw distribution across 4,940 matches, yielding a 1.34x empirical lift over the 24.5% baseline) */}
               {probabilities.draw >= 0.25 && predicted_result !== 'DRAW' && (
                 <span
-                  title="Elevated Draw Risk: Calibrated draw probability is in the top decile (>=90th percentile), representing a 1.34x empirical lift over the Premier League baseline draw rate."
+                  title="Elevated Draw Risk: Calibrated draw probability is in the top decile (>=90th percentile), representing a 1.34x empirical lift over the Premier League baseline (32.7% empirical rate vs 24.5% baseline). A decisive winner remains most likely."
                   className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 cursor-help"
                 >
                   Elevated Draw Risk ({Math.round(probabilities.draw * 100)}%)

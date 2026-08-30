@@ -43,7 +43,7 @@ Evaluated on the untouched 2025–26 test season ($N=380$ matches):
 
 * **Home Win**: Platt calibration reduces Expected Calibration Error (ECE) from 0.0655 down to **0.0331** (a **50% reduction in error**), tracking the diagonal line closely (Brier score: **0.2222**).
 * **Draw**: Calibrated probability clusters around **0.2310**, closely matching the empirical 27.4% test base rate (ECE: **0.0427**, Brier score: **0.2007**).
-* **Away Win**: Calibrated probabilities track the diagonal monotonically across low, mid, and high probability bins (Brier score: **0.1976**).
+* **Away Win**: Global Brier score improves from $0.1998 \to \mathbf{0.1976}$ and **Sample-Weighted ECE drops to $0.0307$**. (Note: Unweighted macro ECE shows an apparent increase due to upper-tail sample sparsity, with only $n=2$ test matches having $P(\text{Away}) > 0.65$).
 
 ---
 

@@ -62,17 +62,21 @@ Under Bayesian decision theory with symmetric 0-1 loss (maximizing accuracy), $\
 * **Validation Set:** 380 matches (1 season: 2024–25)
 * **Untouched Test Set:** 380 matches (1 season: 2025–26)
 
+### Q11: How did you evaluate probability calibration and explain the Away Win ECE?
+**Answer:** We evaluated calibration using Reliability Diagrams (binned predicted probability vs. observed frequency), Brier score loss, and Expected Calibration Error (ECE) on the 2025–26 test set. Platt calibration cut Home Win ECE by 50% (0.0655 → 0.0331) and improved Brier scores across all 3 classes (Home: 0.2222, Draw: 0.2007, Away: 0.1976).
+For Away Win, while global Brier score improved, unweighted macro ECE showed an apparent increase (0.0563 → 0.0987). This is an artifact of equal-width binning in sparse tails: only $n=2$ test matches had $P(\text{Away}) > 0.65$ (both were away wins, creating an unweighted error of $|1.0 - 0.68| = 0.32$ that skews the macro average). When bins are sample-weighted ($n_b / N$), the **Sample-Weighted ECE is 0.0307**, confirming genuine empirical calibration.
+
 ---
 
 ## 3. Frontend & Infrastructure Questions
 
-### Q11: How does TanStack Query (React Query) improve UI performance?
+### Q12: How does TanStack Query (React Query) improve UI performance?
 **Answer:** TanStack Query handles server-state caching, automatic refetching, deduplication of in-flight requests, and optimistic updates. Team lists and league metadata are cached with a 5-minute `staleTime`, preventing redundant network requests when switching tabs.
 
-### Q12: How does Docker Compose networking work?
+### Q13: How does Docker Compose networking work?
 **Answer:** Docker Compose creates an isolated bridge network (`matchiq_default`). Containers communicate via service names as DNS hosts (`postgres:5432`, `backend:8000`). Nginx acts as a reverse proxy in the frontend container, proxying `/api/*` traffic to `http://backend:8000/`.
 
-### Q13: How would you scale MatchIQ for high traffic?
+### Q14: How would you scale MatchIQ for high traffic?
 **Answer:**
 1. **API Scaling:** Run FastAPI inside Docker behind a load balancer (AWS ALB / Nginx) using `gunicorn` with multiple `uvicorn.workers.UvicornWorker` workers.
 2. **Prediction Caching:** Cache team feature vectors and prediction results in Redis with a 1-hour TTL.

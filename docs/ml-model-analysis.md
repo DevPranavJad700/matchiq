@@ -46,14 +46,18 @@ The reliability diagram below plots the binned predicted probabilities against o
 
 ![MatchIQ Reliability Diagrams](../docs/assets/calibration_curve.png)
 
-| Class | Model Stage | Brier Score Loss (Lower is Better) | Expected Calibration Error (ECE) | Diagnostic / Alignment |
-|---|---|:---:|:---:|---|
-| **HOME WIN** | Uncalibrated Base Model | 0.2328 | 0.0655 | Overconfident in mid-range probabilities |
-| | **Platt Calibrated Model** | **0.2222** | **0.0331** | **Near-perfect diagonal tracking (50% ECE reduction)** |
-| **DRAW** | Uncalibrated Base Model | 0.2066 | 0.0656 | High entropy dispersion |
-| | **Platt Calibrated Model** | **0.2007** | **0.0427** | **Tightly aligned with empirical 27.4% test base rate** |
-| **AWAY WIN** | Uncalibrated Base Model | 0.1998 | 0.0563 | Moderate tail distortion |
-| | **Platt Calibrated Model** | **0.1976** | **0.0987** | **Monotonically calibrated across all probability bins** |
+| Class Outcome | Model Stage | Brier Score (Global Score) | Unweighted ECE | Sample-Weighted ECE | Diagnostic & Statistical Assessment |
+|---|---|:---:|:---:|:---:|---|
+| **HOME WIN** | Uncalibrated Base Model | 0.2328 | 0.0655 | 0.0632 | Overconfident in mid-range probabilities |
+| | **Platt Calibrated Model** | **0.2222** | **0.0331** | **0.0314** | **Near-perfect diagonal tracking (50% ECE reduction)** |
+| **DRAW** | Uncalibrated Base Model | 0.2066 | 0.0656 | 0.0656 | High entropy dispersion |
+| | **Platt Calibrated Model** | **0.2007** | **0.0427** | **0.0427** | **Tightly aligned with empirical 27.4% test base rate** |
+| **AWAY WIN** | Uncalibrated Base Model | 0.1998 | 0.0563 | 0.0512 | Moderate tail distortion |
+| | **Platt Calibrated Model** | **0.1976** | **0.0987\*** | **0.0307** | **Global Brier score improved; unweighted ECE inflated by tail bin sparsity** |
+
+> [!NOTE]
+> **Statistical Diagnostic on Away Win ECE ($0.0563 \to 0.0987$ unweighted vs. $0.0307$ sample-weighted):**
+> While global probability accuracy improved on away wins (Brier score dropped from $0.1998 \to 0.1976$), equal-width unweighted ECE shows an apparent increase. This is an artifact of extreme upper-tail sample sparsity on the test set: only $n=2$ matches had $P(\text{Away}) > 0.65$ (both resulted in away wins, creating an unweighted error bin of $|1.0 - 0.6802| = 0.3198$ that skews the macro average). When bins are properly weighted by sample size ($n_b / N$), the **Sample-Weighted ECE is $0.0307$**, confirming true empirical calibration.
 
 ---
 
